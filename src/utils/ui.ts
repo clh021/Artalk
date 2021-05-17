@@ -8,6 +8,8 @@ export default class Ui extends ArtalkContext {
   constructor (artalk: Artalk) {
     super(artalk)
     this.el = this.artalk.el
+
+    this.initDarkMode() // 初始化暗黑模式
   }
 
   /**
@@ -62,7 +64,7 @@ export default class Ui extends ArtalkContext {
   /**
    * 显示对话框
    */
-  showDialog (parentElem: HTMLElement, html: HTMLElement, onConfirm?: (dialogElem: HTMLElement, btnElem: HTMLElement) => boolean|void, onCancel?: () => boolean|void) {
+  showDialog (parentElem: HTMLElement, html: HTMLElement, onConfirm?: (dialogElem: HTMLElement, btnElem: HTMLElement) => boolean|void, onCancel?: () => boolean|void, onMount?: (dialogEl: HTMLElement) => void) {
     const dialogElem = Utils.createElement('<div class="artalk-layer-dialog-wrap"><div class="artalk-layer-dialog"><div class="artalk-layer-dialog-content"></div><div class="artalk-layer-dialog-action"></div>')
     parentElem.appendChild(dialogElem)
 
@@ -87,6 +89,8 @@ export default class Ui extends ArtalkContext {
 
     // 内容
     dialogElem.querySelector('.artalk-layer-dialog-content').appendChild(html)
+
+    onMount(dialogElem)
   }
 
   /**
@@ -173,5 +177,42 @@ export default class Ui extends ArtalkContext {
   /** 播放渐出动画 */
   playFadeOutAnim (elem: HTMLElement, after?: () => void) {
     this.playFadeAnim(elem, after, 'out')
+  }
+
+  /** 暗黑模式 - 初始化 */
+  initDarkMode () {
+    const { el, conf } = this.artalk
+    const className = 'artalk-dark-mode'
+    if (conf.darkMode) {
+      el.classList.add(className)
+    } else {
+      el.classList.remove(className)
+    }
+
+    // for Layer
+    const layerEl = document.querySelector(`.artalk-layer-wrap`)
+    if (layerEl) {
+      if (conf.darkMode) {
+        layerEl.classList.add(className)
+      } else {
+        layerEl.classList.remove(className)
+      }
+    }
+  }
+
+  /** 暗黑模式 - 设定 */
+  setDarkMode (darkMode: boolean) {
+    this.artalk.conf.darkMode = darkMode
+    this.initDarkMode()
+  }
+
+  /** 暗黑模式 - 开启 */
+  openDarkMode () {
+    this.setDarkMode(true)
+  }
+
+  /** 暗黑模式 - 关闭 */
+  closeDarkMode () {
+    this.setDarkMode(false)
   }
 }

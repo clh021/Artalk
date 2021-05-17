@@ -28,7 +28,7 @@ export class Layer extends ArtalkContext {
     this.el.style.display = 'none'
 
     // 添加到 layers wrap 中
-    this.wrapEl.prepend(this.el)
+    this.wrapEl.append(this.el)
   }
 
   private initWrap () {
@@ -41,6 +41,7 @@ export class Layer extends ArtalkContext {
     }
 
     this.maskEl = this.wrapEl.querySelector('.artalk-layer-mask')
+    this.artalk.ui.initDarkMode()
   }
 
   getName () {
@@ -94,6 +95,15 @@ export class Layer extends ArtalkContext {
     this.maskClickHideEnable = enable
   }
 
+  /** 销毁 - 无动画 */
+  disposeNow () {
+    this.wrapEl.style.display = 'none'
+    document.body.style.overflow = ''
+    this.el.remove()
+    this.el = null
+  }
+
+  /** 销毁 */
   dispose () {
     this.hide()
     this.el.remove()
