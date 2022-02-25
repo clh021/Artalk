@@ -1,9 +1,8 @@
 <p align="center">
-<img src="./docs/banner-2021.png" alt="Artalk" width="100%">
+<img src="https://user-images.githubusercontent.com/22412567/137740516-d9e97af0-fb3b-4dab-b331-671a9a2a3a63.png" alt="Artalk" width="100%">
 </p>
 
-# [Artalk](https://artalk.js.org)
-> 一款简洁有趣的自托管评论系统
+# Artalk
 
 [![](https://img.shields.io/npm/v/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
 [![](https://img.shields.io/npm/dt/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
@@ -13,172 +12,73 @@
 [![](https://img.shields.io/travis/com/ArtalkJS/Artalk?style=flat-square)](https://travis-ci.com/ArtalkJS/Artalk)
 [![](https://img.shields.io/github/license/ArtalkJS/Artalk.svg?style=flat-square)](./LICENSE)
 
+> 🌌 一款简洁的自托管评论系统 | A Selfhosted Comment System.
+
+前往：[“**官方文档**”](https://artalk.js.org)
+
+---
+
+- 轻量 (~30kB gzipped)
+- 自托管 (隐私安全)
+- 简单易上手 (防秃顶)
+- Markdown 语法 (通用性)
+- Golang 后端 (易部署 / 跨平台)
+
 ## 特性
-- 轻量简洁 (~23kB gzipped)
-- 有趣有爱
-- 自托管
-- Markdown
-- 表情自定
-- 滑稽表情包
-- 管理员密码，防冒名
-- 验证码，提交频率限制
-- 通知中心，邮件提醒
-- 仅管理员可评论
-- 无限层级回复
-- 滚动加载更多
-- 内容自动保存
-- 暗黑模式
-- 评论折叠
-- 一页多个评论
-- TypeScript
 
-[查看 DEMO](https://artalk.js.org)
+- 表 情 包 ：统一管理 / 链接替换
+- 通知中心：红点标记 / 已读记录
+- 身份验证：徽标自定义 / 密码验证
+- 站点隔离：多站点管理 / 站点管理员用户分配
+- 评论审核：反垃圾检测 / 验证码 / 提交频率限制
+- 邮件提醒：模版自定义 / 多管理员通知
+- 树洞模式：仅自己可见 / 说说功能
+- 页面管理：标题可显示 / 快速跳转
+- 无限层级：可切换为 “平铺模式”
+- 评论投票：赞同还是反对评论
+- 异步处理：邮件发送无需等待
+- 滚动加载：评论内容分页处置
+- 自动保存：用户输入防丢功能
+- 自动填充：用户链接自动填充
+- 暗黑模式：防止眼部疾病伤害
+- 评论折叠：这个不打算给你康
+- 数据备份：防止评论数据丢失
+- 数据迁移：在不同评论系统之间来回切换
+- 一页多评：一页多个评论区（似乎没啥用
+- TypeScript & Vanilla：纯天然无添加 / 无需依赖
+- [Vite](https://github.com/vitejs/vite)：开发者的极致体验
 
-## 基本食用方法
+## 食用方针
 
-> 前端资源下载：[Artalk.js](./dist/Artalk.js) | [Artalk.css](./dist/Artalk.css)
+前往：[“**文档 · 部署**”](https://artalk.js.org/guide/deploy.html)
 
-1. 部署 Artalk 的后端，传送门：[PHP API](https://github.com/ArtalkJS/Artalk-API-PHP) / Go API
-2. 前端页面配置 Artalk 如下：
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <!-- ... -->
-  <link href="dist/Artalk.css" rel="stylesheet">
-</head>
-<body>
-  <div id="ArtalkComments"></div>
-  <!-- ... -->
-  <script src="dist/Artalk.js"></script>
-  <script>
-  new Artalk({
-    el: '#ArtalkComments', // 元素选择
-    placeholder: '来啊，快活啊 ( ゜- ゜)', // 占位符
-    noComment: '快来成为第一个评论的人吧~', // 无评论时显示
-    pageKey: '[页面唯一标识]',
-    serverUrl: '[后端程序URL]',
-    readMore: { // 阅读更多配置
-      pageSize: 15, // 每次请求获取评论数
-      autoLoad: true // 滚动到底部自动加载
-    }
-  });
-  </script>
-</body>
-</html>
+```sh
+$ yarn add artalk
 ```
 
-前端更多 QuickStart 栗子，请参考 [/example/](./example/) 目录
-
-## 一些进阶的操作
-
-<details>
-
-<summary>点我给你看</summary>
-
-### 自定义头像 Gravatar 镜像源
-
-Artalk 依赖于 [Gravatar](https://gravatar.com) 服务，但 Gravatar 在部分地区可能会出现连接问题。
-
-可通过以下配置解决：
-
-```js
-new Artalk({
-  gravatar: {
-    cdn: 'https://cdn.v2ex.com/gravatar/'
-  }
-
-  // ... 你的其他配置
-})
-```
-
-目前默认使用 v2ex 的镜像，如果您有更好的，欢迎反馈~~
-
-### 默认头像
-
-Gravatar 默认头像，参考：[传送门](https://cn.gravatar.com/site/implement/images/#default-image)
-
-```js
-new Artalk({
-  defaultAvatar: 'mp',
-  
-  // ... 你的其他配置
-})
-```
-
-### 开启暗黑模式
-
-以下给出简单的栗子，可以结合博客主题的暗黑模式食用：
-
-```html
-<button onclick="switchDarkMode()">暗黑模式按钮</button>
-
-<script>
-var artalk = new Artalk({ // ① 暴露 artalk 变量以供调用
-  // ... 各种配置
-
-  darkMode: false,
-  // ↑ ② 当 Artalk 初始化时，是否立刻开启暗黑模式
-  // ↑ 这里可以直接读取当前主题的模式
-})
-
-// ③ 动态设置 Artalk 的暗黑模式
-let isDarkMode = false // 读取当前你主题的模式
-artalk.ui.setDarkMode(darkMode)
-
-// ④ 你主题 暗黑模式切换按钮 点击时的触发操作
-function switchDarkMode() {
-  let isDarkMode = true // ...
-  artalk.ui.setDarkMode(darkMode)
-}
-</script>
-```
-
-独立开发新的暗黑模式可以参考：[我的栗子](https://github.com/ArtalkJS/Artalk/blob/master/index.html#L88) | [如何和操作系统的暗黑模式同步？](https://stackoverflow.com/questions/50840168/how-to-detect-if-the-os-is-in-dark-mode-in-browsers)
-
-### 自定义表情包
-
-表情包配置格式参考：[emoticons.json](/src/assets/emoticons.json)
-
-```js
-// ↓ 首先将表情包数据加载并存到变量中
-let eData = {
-  // ...
-}
+```ts
+import Artalk from 'artalk'
 
 new Artalk({
-  emoticons: eData
-
-  // ... 你的其他配置
+  el:        '#Comments',
+  pageKey:   '<页面链接>',
+  pageTitle: '<页面标题>',
+  server:    '<后端地址>',
+  site:      '<站点名称>',
 })
 ```
 
-前端更多配置项详见 [/types/artalk-config.d.ts](./types/artalk-config.d.ts)
+## 特别致谢
 
-</details>
+感谢社区提供的帮助与反馈，若有好的建议与意见欢迎前往 [ISSUES](https://github.com/ArtalkJS/Artalk/issues) 随时告知。
 
-## 开发
+## Stargazers over time
 
-<details>
-
-<summary>点我给你看</summary>
-
-```bash
-git clone https://github.com/ArtalkJS/Artalk.git
-cd Artalk
-yarn install
-
-# Dev
-yarn run dev
-
-# Build
-yarn run build
-```
-
-Made with ♥
-
-</details>
+[![Stargazers over time](https://starchart.cc/ArtalkJS/Artalk.svg)](https://starchart.cc/ArtalkJS/Artalk)
 
 ## License
-[GPL-2.0](./LICENSE)
+[GPL-3.0](./LICENSE)
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FArtalkJS%2FArtalk.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FArtalkJS%2FArtalk?ref=badge_shield)
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FArtalkJS%2FArtalk.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FArtalkJS%2FArtalk?ref=badge_large)

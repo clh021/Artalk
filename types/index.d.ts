@@ -1,6 +1,3 @@
-declare class Artalk {
+import Artalk from '../src/artalk'
 
-}
-
-export as namespace Artalk
 export default Artalk
