@@ -140,43 +140,44 @@ export function versionCompare(a: string, b: string) {
   return 0
 }
 
-let markedInstance: typeof libMarked
-export function marked(ctx: Context, src: string): string {
-  if (!markedInstance) {
-    const renderer = new libMarked.Renderer()
-    const linkRenderer = renderer.link
-    renderer.link = (href, title, text) => {
-      const localLink = href?.startsWith(`${window.location.protocol}//${window.location.hostname}`);
-      const html = linkRenderer.call(renderer as any, href, title, text);
-      return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ''} `);
-    }
-
-    // @see https://github.com/markedjs/marked/blob/4afb228d956a415624c4e5554bb8f25d047676fe/src/Tokenizer.js#L329
-    const nMarked = libMarked
-    libMarked.setOptions({
-      renderer,
-      highlight: (code) => hanabi(code),
-      pedantic: false,
-      gfm: true,
-      breaks: true,
-      smartLists: true,
-      smartypants: true,
-      xhtml: false,
-      sanitize: true,
-      sanitizer: (html) => insane(html, {
-        ...insane.defaults,
-        allowedAttributes: {
-          ...insane.defaults.allowedAttributes,
-          img: ['src', 'atk-emoticon']
-        },
-      }),
-      silent: true,
-    })
-
-    markedInstance = nMarked
+/** 初始化 marked */
+export function initMarked(ctx: Context) {
+  const renderer = new libMarked.Renderer()
+  const linkRenderer = renderer.link
+  renderer.link = (href, title, text) => {
+    const localLink = href?.startsWith(`${window.location.protocol}//${window.location.hostname}`);
+    const html = linkRenderer.call(renderer as any, href, title, text);
+    return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ''} `);
   }
 
-  return markedInstance.parse(src)
+  // @see https://github.com/markedjs/marked/blob/4afb228d956a415624c4e5554bb8f25d047676fe/src/Tokenizer.js#L329
+  const nMarked = libMarked
+  libMarked.setOptions({
+    renderer,
+    highlight: (code) => hanabi(code),
+    pedantic: false,
+    gfm: true,
+    breaks: true,
+    smartLists: true,
+    smartypants: true,
+    xhtml: false,
+    sanitize: true,
+    sanitizer: (html) => insane(html, {
+      ...insane.defaults,
+      allowedAttributes: {
+        ...insane.defaults.allowedAttributes,
+        img: ['src', 'atk-emoticon']
+      },
+    }),
+    silent: true,
+  })
+
+  ctx.markedInstance = nMarked
+}
+
+/** 解析 markdown */
+export function marked(ctx: Context, src: string): string {
+  return ctx.markedInstance.parse(src)
 }
 
 /** 获取修正后的 UserAgent */
@@ -202,4 +203,24 @@ export async function getCorrectUserAgent() {
   }
 
   return uaRaw
+}
+
+/** 是否为完整的 URL */
+export function isValidURL(urlRaw: string) {
+  // @link https://www.rfc-editor.org/rfc/rfc3986
+  let url: URL
+  try {
+    url = new URL(urlRaw)
+  } catch (_) { return false }
+  return url.protocol === "http:" || url.protocol === "https:"
+}
+
+/** 获取基于 conf.server 的 URL */
+export function getURLBasedOnApi(ctx: Context, path: string) {
+  return `${ctx.conf.server.replace(/\/api\/?$/, '')}/${path.replace(/^\//, '')}`
+}
+
+/** 获取基于某个 baseURL 的 URL */
+export function getURLBasedOn(baseURL: string, path: string) {
+  return `${baseURL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
 }

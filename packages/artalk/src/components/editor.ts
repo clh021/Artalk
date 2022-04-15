@@ -247,7 +247,7 @@ export default class Editor extends Component {
       })
     })
 
-    this.initImgUploadBtn()
+    this.initImgUpload()
   }
 
   /** 关闭编辑器插件 */
@@ -260,11 +260,12 @@ export default class Editor extends Component {
   /** 允许的图片格式 */
   allowImgExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp']
 
-  /** 初始化图片上传按钮 */
-  initImgUploadBtn() {
+  /** 初始化图片上传功能 */
+  initImgUpload() {
     this.$imgUploadBtn = Utils.createElement(`<span class="atk-plug-btn">图片</span>`)
     this.$plugBtnWrap.querySelector('[data-plug-name="preview"]')!.before(this.$imgUploadBtn) // 显示在预览图标之前
 
+    // 按钮点击
     this.$imgUploadBtn.onclick = () => {
       // 选择图片
       const $input = document.createElement('input')
@@ -280,6 +281,17 @@ export default class Editor extends Component {
       $input.click() // 显示选择图片对话框
     }
 
+    // 统一从 FileList 获取文件并上传图片方法
+    const uploadFromFileList = (files?: FileList) => {
+      if (!files) return
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        this.uploadImg(file)
+      }
+    }
+
+    // 拖拽图片
     // @link https://developer.mozilla.org/zh-CN/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop
     // 阻止浏览器的默认释放行为
     this.$textarea.addEventListener('dragover', (evt) => {
@@ -288,12 +300,19 @@ export default class Editor extends Component {
     })
 
     this.$textarea.addEventListener('drop', (evt) => {
-      if (evt.dataTransfer?.files) {
+      const files = evt.dataTransfer?.files
+      if (files?.length) {
         evt.preventDefault()
-        for (let i = 0; i < evt.dataTransfer.files.length; i++) {
-          const file = evt.dataTransfer.files[i]
-          this.uploadImg(file)
-        }
+        uploadFromFileList(files)
+      }
+    })
+
+    // 粘贴图片
+    this.$textarea.addEventListener('paste', (evt) => {
+      const files = evt.clipboardData?.files
+      if (files?.length) {
+        evt.preventDefault()
+        uploadFromFileList(files)
       }
     })
   }
@@ -312,8 +331,18 @@ export default class Editor extends Component {
     const fileExt = /[^.]+$/.exec(file.name)
     if (!fileExt || !this.allowImgExts.includes(fileExt[0])) return
 
+    // 未登录提示
+    if (!this.ctx.user.checkHasBasicUserInfo()) {
+      this.showNotify('填入你的名字邮箱才能上传哦', 'w')
+      return
+    }
+
+    // 插入图片前换一行
+    let insertPrefix = '\n'
+    if (this.$textarea.value.trim() === '') insertPrefix = ''
+
     // 插入占位加载文字
-    const uploadPlaceholderTxt = `\n![](Uploading ${file.name}...)`
+    const uploadPlaceholderTxt = `${insertPrefix}![](Uploading ${file.name}...)`
     this.insertContent(uploadPlaceholderTxt)
 
     // 上传图片
@@ -326,20 +355,16 @@ export default class Editor extends Component {
     }
     if (!!resp && resp.img_url) {
       let imgURL = resp.img_url as string
-      if (imgURL.startsWith('.') || (imgURL.startsWith('/') && !imgURL.startsWith('//'))) {
-        // 若为相对路径，加上 artalk server
-        imgURL = `${this.ctx.conf.server.replace(/\/api\/?$/, '')}/${imgURL.replace(/^\//, '')}`
-      }
+
+      // 若为相对路径，加上 artalk server
+      if (!Utils.isValidURL(imgURL)) imgURL = Utils.getURLBasedOnApi(this.ctx, imgURL)
 
       // 上传成功插入图片
-      this.$textarea.value = this.$textarea.value.replace(uploadPlaceholderTxt, `\n![](${imgURL})`)
+      this.setContent(this.$textarea.value.replace(uploadPlaceholderTxt, `${insertPrefix}![](${imgURL})`))
     } else {
       // 上传失败删除加载文字
-      this.$textarea.value = this.$textarea.value.replace(uploadPlaceholderTxt, '')
+      this.setContent(this.$textarea.value.replace(uploadPlaceholderTxt, ''))
     }
-
-    // 更新内容保存到 localStorage
-    this.saveContent()
   }
 
   insertContent (val: string) {
@@ -376,7 +401,8 @@ export default class Editor extends Component {
     this.cancelReply()
   }
 
-  getContent () {
+  /** 获取最终用于 submit 的数据 */
+  getFinalContent () {
     let content = this.getContentOriginal()
 
     // 表情包处理
@@ -393,7 +419,7 @@ export default class Editor extends Component {
   }
 
   getContentMarked () {
-    return Utils.marked(this.ctx, this.getContent())
+    return Utils.marked(this.ctx, this.getFinalContent())
   }
 
   initBottomPart () {
@@ -452,7 +478,7 @@ export default class Editor extends Component {
   }
 
   async submit () {
-    if (this.getContent().trim() === '') {
+    if (this.getFinalContent().trim() === '') {
       this.$textarea.focus()
       return
     }
@@ -463,7 +489,7 @@ export default class Editor extends Component {
 
     try {
       const nComment = await new Api(this.ctx).add({
-        content: this.getContent(),
+        content: this.getFinalContent(),
         nick: this.user.data.nick,
         email: this.user.data.email,
         link: this.user.data.link,

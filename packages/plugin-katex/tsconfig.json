@@ -18,11 +18,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "paths": {
-      "~/*": ["./*"],
-      "@/*": ["./src/*"]
-    },
-    "types": ["vite/client"]
+    "types": ["vite/client"],
   },
-  "include": ["./src", "./types"]
 }
