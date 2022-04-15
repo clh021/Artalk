@@ -68,6 +68,7 @@ class Context {
     __publicField(this, "conf");
     __publicField(this, "user");
     __publicField(this, "eventList", []);
+    __publicField(this, "markedInstance");
     this.cid = +new Date();
     this.$root = rootEl;
     this.conf = conf;
@@ -102,6 +103,7 @@ const defaults$3 = {
   vote: true,
   voteDown: false,
   uaBadge: true,
+  listSort: true,
   pvEl: "#ArtalkPV",
   flatMode: "auto",
   maxNesting: 3,
@@ -2655,37 +2657,36 @@ function versionCompare(a, b) {
   }
   return 0;
 }
-let markedInstance;
+function initMarked(ctx) {
+  const renderer = new marked$1.Renderer();
+  const linkRenderer = renderer.link;
+  renderer.link = (href, title, text) => {
+    const localLink = href == null ? void 0 : href.startsWith(`${window.location.protocol}//${window.location.hostname}`);
+    const html = linkRenderer.call(renderer, href, title, text);
+    return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ""} `);
+  };
+  const nMarked = marked$1;
+  marked$1.setOptions({
+    renderer,
+    highlight: (code) => hanabi(code),
+    pedantic: false,
+    gfm: true,
+    breaks: true,
+    smartLists: true,
+    smartypants: true,
+    xhtml: false,
+    sanitize: true,
+    sanitizer: (html) => insane_1(html, __spreadProps(__spreadValues({}, insane_1.defaults), {
+      allowedAttributes: __spreadProps(__spreadValues({}, insane_1.defaults.allowedAttributes), {
+        img: ["src", "atk-emoticon"]
+      })
+    })),
+    silent: true
+  });
+  ctx.markedInstance = nMarked;
+}
 function marked(ctx, src) {
-  if (!markedInstance) {
-    const renderer = new marked$1.Renderer();
-    const linkRenderer = renderer.link;
-    renderer.link = (href, title, text) => {
-      const localLink = href == null ? void 0 : href.startsWith(`${window.location.protocol}//${window.location.hostname}`);
-      const html = linkRenderer.call(renderer, href, title, text);
-      return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ""} `);
-    };
-    const nMarked = marked$1;
-    marked$1.setOptions({
-      renderer,
-      highlight: (code) => hanabi(code),
-      pedantic: false,
-      gfm: true,
-      breaks: true,
-      smartLists: true,
-      smartypants: true,
-      xhtml: false,
-      sanitize: true,
-      sanitizer: (html) => insane_1(html, __spreadProps(__spreadValues({}, insane_1.defaults), {
-        allowedAttributes: __spreadProps(__spreadValues({}, insane_1.defaults.allowedAttributes), {
-          img: ["src", "atk-emoticon"]
-        })
-      })),
-      silent: true
-    });
-    markedInstance = nMarked;
-  }
-  return markedInstance.parse(src);
+  return ctx.markedInstance.parse(src);
 }
 function getCorrectUserAgent() {
   return __async(this, null, function* () {
@@ -2710,6 +2711,18 @@ function getCorrectUserAgent() {
     }
     return uaRaw;
   });
+}
+function isValidURL(urlRaw) {
+  let url;
+  try {
+    url = new URL(urlRaw);
+  } catch (_) {
+    return false;
+  }
+  return url.protocol === "http:" || url.protocol === "https:";
+}
+function getURLBasedOnApi(ctx, path) {
+  return `${ctx.conf.server.replace(/\/api\/?$/, "")}/${path.replace(/^\//, "")}`;
 }
 function showLoading(parentElem) {
   if (parentElem instanceof Context)
@@ -3913,14 +3926,14 @@ class Editor extends Component {
         btnElem.classList.add("active");
       });
     });
-    this.initImgUploadBtn();
+    this.initImgUpload();
   }
   closePlug() {
     this.$plugWrap.innerHTML = "";
     this.$plugWrap.style.display = "none";
     this.openedPlugName = null;
   }
-  initImgUploadBtn() {
+  initImgUpload() {
     this.$imgUploadBtn = createElement(`<span class="atk-plug-btn">\u56FE\u7247</span>`);
     this.$plugBtnWrap.querySelector('[data-plug-name="preview"]').before(this.$imgUploadBtn);
     this.$imgUploadBtn.onclick = () => {
@@ -3937,18 +3950,32 @@ class Editor extends Component {
       };
       $input.click();
     };
+    const uploadFromFileList = (files) => {
+      if (!files)
+        return;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        this.uploadImg(file);
+      }
+    };
     this.$textarea.addEventListener("dragover", (evt) => {
       evt.stopPropagation();
       evt.preventDefault();
     });
     this.$textarea.addEventListener("drop", (evt) => {
       var _a;
-      if ((_a = evt.dataTransfer) == null ? void 0 : _a.files) {
+      const files = (_a = evt.dataTransfer) == null ? void 0 : _a.files;
+      if (files == null ? void 0 : files.length) {
         evt.preventDefault();
-        for (let i = 0; i < evt.dataTransfer.files.length; i++) {
-          const file = evt.dataTransfer.files[i];
-          this.uploadImg(file);
-        }
+        uploadFromFileList(files);
+      }
+    });
+    this.$textarea.addEventListener("paste", (evt) => {
+      var _a;
+      const files = (_a = evt.clipboardData) == null ? void 0 : _a.files;
+      if (files == null ? void 0 : files.length) {
+        evt.preventDefault();
+        uploadFromFileList(files);
       }
     });
   }
@@ -3965,8 +3992,14 @@ class Editor extends Component {
       const fileExt = /[^.]+$/.exec(file.name);
       if (!fileExt || !this.allowImgExts.includes(fileExt[0]))
         return;
-      const uploadPlaceholderTxt = `
-![](Uploading ${file.name}...)`;
+      if (!this.ctx.user.checkHasBasicUserInfo()) {
+        this.showNotify("\u586B\u5165\u4F60\u7684\u540D\u5B57\u90AE\u7BB1\u624D\u80FD\u4E0A\u4F20\u54E6", "w");
+        return;
+      }
+      let insertPrefix = "\n";
+      if (this.$textarea.value.trim() === "")
+        insertPrefix = "";
+      const uploadPlaceholderTxt = `${insertPrefix}![](Uploading ${file.name}...)`;
       this.insertContent(uploadPlaceholderTxt);
       let resp;
       try {
@@ -3977,15 +4010,12 @@ class Editor extends Component {
       }
       if (!!resp && resp.img_url) {
         let imgURL = resp.img_url;
-        if (imgURL.startsWith(".") || imgURL.startsWith("/") && !imgURL.startsWith("//")) {
-          imgURL = `${this.ctx.conf.server.replace(/\/api\/?$/, "")}/${imgURL.replace(/^\//, "")}`;
-        }
-        this.$textarea.value = this.$textarea.value.replace(uploadPlaceholderTxt, `
-![](${imgURL})`);
+        if (!isValidURL(imgURL))
+          imgURL = getURLBasedOnApi(this.ctx, imgURL);
+        this.setContent(this.$textarea.value.replace(uploadPlaceholderTxt, `${insertPrefix}![](${imgURL})`));
       } else {
-        this.$textarea.value = this.$textarea.value.replace(uploadPlaceholderTxt, "");
+        this.setContent(this.$textarea.value.replace(uploadPlaceholderTxt, ""));
       }
-      this.saveContent();
     });
   }
   insertContent(val) {
@@ -4019,7 +4049,7 @@ class Editor extends Component {
     this.setContent("");
     this.cancelReply();
   }
-  getContent() {
+  getFinalContent() {
     let content = this.getContentOriginal();
     if (this.plugList && this.plugList.emoticons) {
       const emoticonsPlug2 = this.plugList.emoticons;
@@ -4031,7 +4061,7 @@ class Editor extends Component {
     return this.$textarea.value || "";
   }
   getContentMarked() {
-    return marked(this.ctx, this.getContent());
+    return marked(this.ctx, this.getFinalContent());
   }
   initBottomPart() {
     this.initReply();
@@ -4080,7 +4110,7 @@ class Editor extends Component {
   }
   submit() {
     return __async(this, null, function* () {
-      if (this.getContent().trim() === "") {
+      if (this.getFinalContent().trim() === "") {
         this.$textarea.focus();
         return;
       }
@@ -4088,7 +4118,7 @@ class Editor extends Component {
       showLoading(this.$el);
       try {
         const nComment = yield new Api(this.ctx).add({
-          content: this.getContent(),
+          content: this.getFinalContent(),
           nick: this.user.data.nick,
           email: this.user.data.email,
           link: this.user.data.link,
@@ -5525,9 +5555,9 @@ class ListLite extends Component {
   }
   versionCheck(versionData) {
     const needVersion = (versionData == null ? void 0 : versionData.fe_min_version) || "0.0.0";
-    const needUpdate = versionCompare(needVersion, "2.1.8") === 1;
+    const needUpdate = versionCompare(needVersion, "2.1.9") === 1;
     if (needUpdate) {
-      const errEl = createElement(`<div>\u524D\u7AEF Artalk \u7248\u672C\u5DF2\u8FC7\u65F6\uFF0C\u8BF7\u66F4\u65B0\u4EE5\u83B7\u5F97\u5B8C\u6574\u4F53\u9A8C<br/>\u82E5\u60A8\u662F\u7AD9\u70B9\u7BA1\u7406\u5458\uFF0C\u8BF7\u524D\u5F80 \u201C<a href="https://artalk.js.org/" target="_blank">\u5B98\u65B9\u6587\u6863</a>\u201D \u83B7\u53D6\u5E2E\u52A9<br/><br/><span style="color: var(--at-color-meta);">\u524D\u7AEF\u7248\u672C ${"2.1.8"}\uFF0C\u9700\u6C42\u7248\u672C >= ${needVersion}</span><br/><br/></div>`);
+      const errEl = createElement(`<div>\u524D\u7AEF Artalk \u7248\u672C\u5DF2\u8FC7\u65F6\uFF0C\u8BF7\u66F4\u65B0\u4EE5\u83B7\u5F97\u5B8C\u6574\u4F53\u9A8C<br/>\u82E5\u60A8\u662F\u7AD9\u70B9\u7BA1\u7406\u5458\uFF0C\u8BF7\u524D\u5F80 \u201C<a href="https://artalk.js.org/" target="_blank">\u5B98\u65B9\u6587\u6863</a>\u201D \u83B7\u53D6\u5E2E\u52A9<br/><br/><span style="color: var(--at-color-meta);">\u524D\u7AEF\u7248\u672C ${"2.1.9"}\uFF0C\u9700\u6C42\u7248\u672C >= ${needVersion}</span><br/><br/></div>`);
       const ignoreBtn = createElement('<span style="cursor:pointer;">\u5FFD\u7565</span>');
       ignoreBtn.onclick = () => {
         setError(this.ctx, null);
@@ -5566,8 +5596,10 @@ class List extends ListLite {
     this.repositionAt = this.$el;
     this.initListActionBtn();
     this.$commentCount = this.$el.querySelector(".atk-comment-count");
-    this.initDropdown();
-    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.1.8"}">Artalk</a>`;
+    if (this.ctx.conf.listSort) {
+      this.initDropdown();
+    }
+    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.1.9"}">Artalk</a>`;
     this.ctx.on("list-reload", () => this.fetchComments(0));
     this.ctx.on("list-refresh-ui", () => this.refreshUI());
     this.ctx.on("list-import", (data) => this.importComments(data));
@@ -5775,9 +5807,10 @@ class SidebarLayer extends Component {
       if (this.firstShow) {
         this.$iframeWrap.innerHTML = "";
         this.$iframe = createElement("<iframe></iframe>");
-        const baseURL = `${this.conf.server.replace(/\/$/, "")}/../sidebar/`;
+        const baseURL = getURLBasedOnApi(this.ctx, "sidebar/");
         const userData = encodeURIComponent(JSON.stringify(this.ctx.user.data));
-        this.iframeLoad(`${baseURL}?pageKey=${encodeURIComponent(this.conf.pageKey)}&site=${encodeURIComponent(this.conf.site || "")}&user=${userData}${this.conf.darkMode ? `&darkMode=1` : ``}`);
+        const location = window.location;
+        this.iframeLoad(`${baseURL}?pageKey=${encodeURIComponent(this.conf.pageKey)}&site=${encodeURIComponent(this.conf.site || "")}&user=${userData}&referer=${encodeURIComponent(`${location.protocol}//${location.host}${location.pathname}`)}${this.conf.darkMode ? `&darkMode=1` : ``}`);
         this.$iframeWrap.append(this.$iframe);
         this.firstShow = false;
       } else {
@@ -5857,6 +5890,7 @@ const _Artalk = class {
     this.$root.innerHTML = "";
     this.initDarkMode();
     this.checkerLauncher = new CheckerLauncher(this.ctx);
+    initMarked(this.ctx);
     this.editor = new Editor(this.ctx);
     this.$root.appendChild(this.editor.$el);
     this.list = new List(this.ctx);
@@ -5866,6 +5900,11 @@ const _Artalk = class {
     this.list.fetchComments(0);
     this.initEventBind();
     this.initPV();
+    _Artalk.Plugins.forEach((plugin) => {
+      if (typeof plugin === "function") {
+        plugin(this.ctx);
+      }
+    });
   }
   initEventBind() {
     window.addEventListener("hashchange", () => {
@@ -5936,7 +5975,11 @@ const _Artalk = class {
   trigger(name, payload) {
     this.ctx.trigger(name, payload, "external");
   }
+  static Use(plugin) {
+    this.Plugins.push(plugin);
+  }
 };
 let Artalk = _Artalk;
 __publicField(Artalk, "defaults", defaults$3);
+__publicField(Artalk, "Plugins", []);
 export { Artalk as default };
