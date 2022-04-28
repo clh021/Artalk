@@ -1,6 +1,4 @@
 var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -16,7 +14,6 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __publicField = (obj, key, value) => {
   __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
   return value;
@@ -69,6 +66,7 @@ class Context {
     __publicField(this, "user");
     __publicField(this, "eventList", []);
     __publicField(this, "markedInstance");
+    __publicField(this, "markedReplacers", []);
     this.cid = +new Date();
     this.$root = rootEl;
     this.conf = conf;
@@ -122,7 +120,8 @@ const defaults$3 = {
   },
   imgUpload: true,
   reqTimeout: 15e3,
-  versionCheck: true
+  versionCheck: true,
+  useBackendConf: false
 };
 class Component {
   constructor(ctx) {
@@ -1125,7 +1124,7 @@ function mangle(text) {
 class Lexer {
   constructor(options) {
     this.tokens = [];
-    this.tokens.links = Object.create(null);
+    this.tokens.links = /* @__PURE__ */ Object.create(null);
     this.options = options || defaults$2;
     this.options.tokenizer = this.options.tokenizer || new Tokenizer();
     this.tokenizer = this.options.tokenizer;
@@ -2659,42 +2658,126 @@ function versionCompare(a, b) {
 }
 function initMarked(ctx) {
   const renderer = new marked$1.Renderer();
-  const linkRenderer = renderer.link;
+  const orgLinkRenderer = renderer.link;
   renderer.link = (href, title, text) => {
     const localLink = href == null ? void 0 : href.startsWith(`${window.location.protocol}//${window.location.hostname}`);
-    const html = linkRenderer.call(renderer, href, title, text);
+    const html = orgLinkRenderer.call(renderer, href, title, text);
     return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ""} `);
+  };
+  renderer.code = (block2, lang) => {
+    const realLang = !lang ? "plaintext" : lang;
+    let colorized = block2;
+    if (window.hljs) {
+      if (realLang && window.hljs.getLanguage(realLang)) {
+        colorized = window.hljs.highlight(realLang, block2).value;
+      }
+    } else {
+      colorized = hanabi(block2);
+    }
+    return `<pre rel="${realLang}">
+<code class="hljs language-${realLang}">${colorized.replace(/&amp;/g, "&")}</code>
+</pre>`;
   };
   const nMarked = marked$1;
   marked$1.setOptions({
     renderer,
-    highlight: (code) => hanabi(code),
     pedantic: false,
     gfm: true,
     breaks: true,
     smartLists: true,
     smartypants: true,
     xhtml: false,
-    sanitize: true,
-    sanitizer: (html) => insane_1(html, __spreadProps(__spreadValues({}, insane_1.defaults), {
-      allowedAttributes: __spreadProps(__spreadValues({}, insane_1.defaults.allowedAttributes), {
-        img: ["src", "atk-emoticon"]
-      })
-    })),
+    sanitize: false,
     silent: true
   });
   ctx.markedInstance = nMarked;
 }
 function marked(ctx, src) {
-  return ctx.markedInstance.parse(src);
+  let dest = insane_1(ctx.markedInstance.parse(src), {
+    allowedClasses: {},
+    allowedSchemes: ["http", "https", "mailto"],
+    allowedTags: [
+      "a",
+      "abbr",
+      "article",
+      "b",
+      "blockquote",
+      "br",
+      "caption",
+      "code",
+      "del",
+      "details",
+      "div",
+      "em",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "hr",
+      "i",
+      "img",
+      "ins",
+      "kbd",
+      "li",
+      "main",
+      "mark",
+      "ol",
+      "p",
+      "pre",
+      "section",
+      "span",
+      "strike",
+      "strong",
+      "sub",
+      "summary",
+      "sup",
+      "table",
+      "tbody",
+      "td",
+      "th",
+      "thead",
+      "tr",
+      "u",
+      "ul"
+    ],
+    allowedAttributes: {
+      "*": ["title", "accesskey"],
+      a: ["href", "name", "target", "aria-label", "rel"],
+      img: ["src", "alt", "title", "atk-emoticon", "aria-label"],
+      code: ["class"],
+      span: ["class", "style"]
+    },
+    filter: (node) => {
+      const allowed = [
+        ["code", /^hljs\W+language-(.*)$/],
+        ["span", /^(hljs-.*)$/]
+      ];
+      allowed.forEach(([tag, reg]) => {
+        if (node.tag === tag && !!node.attrs.class && !reg.test(node.attrs.class)) {
+          delete node.attrs.class;
+        }
+      });
+      if (node.tag === "span" && !!node.attrs.style && !/^color:(\W+)?#[0-9a-f]{3,6};?$/i.test(node.attrs.style)) {
+        delete node.attrs.style;
+      }
+      return true;
+    }
+  });
+  ctx.markedReplacers.forEach((replacer) => {
+    if (typeof replacer === "function")
+      dest = replacer(dest);
+  });
+  return dest;
 }
 function getCorrectUserAgent() {
   return __async(this, null, function* () {
     const uaRaw = navigator.userAgent;
-    const uaData = navigator.userAgentData;
-    if (!uaData || !uaData.getHighEntropyValues) {
+    if (!navigator.userAgentData || !navigator.userAgentData.getHighEntropyValues) {
       return uaRaw;
     }
+    const uaData = navigator.userAgentData;
     let uaGot = null;
     try {
       uaGot = yield uaData.getHighEntropyValues(["platformVersion"]);
@@ -2702,12 +2785,16 @@ function getCorrectUserAgent() {
       console.error(err);
       return uaRaw;
     }
-    if (uaData.platform !== "Windows") {
-      return uaRaw;
-    }
     const majorPlatformVersion = Number(uaGot.platformVersion.split(".")[0]);
-    if (majorPlatformVersion >= 13) {
-      return uaRaw.replace(/Windows\W+NT\W+10.0/, "Windows NT 11.0");
+    if (uaData.platform === "Windows") {
+      if (majorPlatformVersion >= 13) {
+        return uaRaw.replace(/Windows NT 10.0/, "Windows NT 11.0");
+      }
+    }
+    if (uaData.platform === "macOS") {
+      if (majorPlatformVersion >= 11) {
+        return uaRaw.replace(/(Mac OS X \d+_\d+_\d+|Mac OS X)/, `Mac OS X ${uaGot.platformVersion.replace(/\./g, "_")}`);
+      }
     }
     return uaRaw;
   });
@@ -2722,9 +2809,30 @@ function isValidURL(urlRaw) {
   return url.protocol === "http:" || url.protocol === "https:";
 }
 function getURLBasedOnApi(ctx, path) {
-  return `${ctx.conf.server.replace(/\/api\/?$/, "")}/${path.replace(/^\//, "")}`;
+  return getURLBasedOn(ctx.conf.server, path);
 }
-function showLoading(parentElem) {
+function getURLBasedOn(baseURL, path) {
+  return `${baseURL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+}
+function mergeDeep(target, source) {
+  const isObject = (obj) => obj && typeof obj === "object";
+  if (!isObject(target) || !isObject(source)) {
+    return source;
+  }
+  Object.keys(source).forEach((key) => {
+    const targetValue = target[key];
+    const sourceValue = source[key];
+    if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+      target[key] = targetValue.concat(sourceValue);
+    } else if (isObject(targetValue) && isObject(sourceValue)) {
+      target[key] = mergeDeep(__spreadValues({}, targetValue), sourceValue);
+    } else {
+      target[key] = sourceValue;
+    }
+  });
+  return target;
+}
+function showLoading(parentElem, conf) {
   if (parentElem instanceof Context)
     parentElem = parentElem.$root;
   let $loading = parentElem.querySelector(".atk-loading");
@@ -2734,6 +2842,8 @@ function showLoading(parentElem) {
         <svg viewBox="25 25 50 50"><circle cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10"></circle></svg>
       </div>
     </div>`);
+    if (conf == null ? void 0 : conf.transparentBg)
+      $loading.style.background = "transparent";
     parentElem.appendChild($loading);
   }
   $loading.style.display = "";
@@ -2861,8 +2971,6 @@ const _Layer = class extends Component {
     __publicField(this, "$wrap");
     __publicField(this, "$mask");
     __publicField(this, "maskClickHideEnable", true);
-    __publicField(this, "bodyStyleOrgOverflow", "");
-    __publicField(this, "bodyStyleOrgPaddingRight", "");
     __publicField(this, "afterHide");
     this.name = name;
     const { $wrap, $mask } = GetLayerWrap(ctx);
@@ -2900,21 +3008,16 @@ const _Layer = class extends Component {
       if (this.maskClickHideEnable)
         this.hide();
     };
-    this.bodyStyleOrgOverflow = document.body.style.overflow;
-    this.bodyStyleOrgPaddingRight = document.body.style.paddingRight;
-    document.body.style.overflow = "hidden";
-    const bpr = parseInt(window.getComputedStyle(document.body, null).getPropertyValue("padding-right"), 10);
-    document.body.style.paddingRight = `${getScrollBarWidth() + bpr || 0}px`;
+    this.pageBodyScrollBarHide();
   }
   hide() {
     if (this.afterHide)
       this.afterHide();
     this.$wrap.classList.add("atk-fade-out");
     this.$el.style.display = "none";
+    this.pageBodyScrollBarShow();
     this.newActionTimer(() => {
       this.$wrap.style.display = "none";
-      document.body.style.overflow = this.bodyStyleOrgOverflow;
-      document.body.style.paddingRight = this.bodyStyleOrgPaddingRight;
       this.checkCleanLayer();
     }, 450);
     this.newActionTimer(() => {
@@ -2924,6 +3027,15 @@ const _Layer = class extends Component {
   }
   setMaskClickHide(enable) {
     this.maskClickHideEnable = enable;
+  }
+  pageBodyScrollBarHide() {
+    document.body.style.overflow = "hidden";
+    const bpr = parseInt(window.getComputedStyle(document.body, null).getPropertyValue("padding-right"), 10);
+    document.body.style.paddingRight = `${getScrollBarWidth() + bpr || 0}px`;
+  }
+  pageBodyScrollBarShow() {
+    document.body.style.overflow = _Layer.BodyOrgOverflow;
+    document.body.style.paddingRight = _Layer.BodyOrgPaddingRight;
   }
   newActionTimer(func, delay) {
     const act = () => {
@@ -2940,8 +3052,8 @@ const _Layer = class extends Component {
     });
   }
   disposeNow() {
-    document.body.style.overflow = "";
     this.$el.remove();
+    this.pageBodyScrollBarShow();
     this.checkCleanLayer();
   }
   dispose() {
@@ -2956,6 +3068,8 @@ const _Layer = class extends Component {
   }
 };
 let Layer = _Layer;
+__publicField(Layer, "BodyOrgOverflow");
+__publicField(Layer, "BodyOrgPaddingRight");
 __publicField(Layer, "actionTimers", []);
 function GetLayerWrap(ctx) {
   let $wrap = document.querySelector(`.atk-layer-wrap#ctx-${ctx.cid}`);
@@ -3032,6 +3146,7 @@ function Fetch(ctx, input, init, timeout) {
         json = yield new Promise((resolve, reject) => {
           ctx.trigger("checker-captcha", {
             imgData: json.data.img_data,
+            iframe: json.data.iframe,
             onSuccess: () => {
               recall(resolve, reject);
             },
@@ -3074,14 +3189,6 @@ function POST(ctx, url, data) {
     return json.data || {};
   });
 }
-function GET(ctx, url, data) {
-  return __async(this, null, function* () {
-    const json = yield Fetch(ctx, url + (data ? `?${new URLSearchParams(data)}` : ""), {
-      method: "GET"
-    });
-    return json.data || {};
-  });
-}
 function ToFormData(object) {
   const formData = new FormData();
   Object.keys(object).forEach((key) => formData.append(key, String(object[key])));
@@ -3106,7 +3213,7 @@ class Api {
     __publicField(this, "ctx");
     __publicField(this, "baseURL");
     this.ctx = ctx;
-    this.baseURL = ctx.conf.server;
+    this.baseURL = `${ctx.conf.server}/api`;
   }
   get(offset, pageSize, flatMode, paramsEditor) {
     const params = {
@@ -3196,6 +3303,15 @@ class Api {
       }
     };
   }
+  loginStatus() {
+    return __async(this, null, function* () {
+      const data = yield POST(this.ctx, `${this.baseURL}/login-status`, {
+        name: this.ctx.user.data.nick,
+        email: this.ctx.user.data.email
+      });
+      return data || { is_login: false, is_admin: false };
+    });
+  }
   pageGet(siteName, offset, limit) {
     return __async(this, null, function* () {
       const params = {
@@ -3227,13 +3343,17 @@ class Api {
     };
     return POST(this.ctx, `${this.baseURL}/admin/page-del`, params);
   }
-  pageFetch(id) {
+  pageFetch(id, siteName, getStatus) {
     return __async(this, null, function* () {
-      const params = {
-        id
-      };
+      const params = {};
+      if (id)
+        params.id = id;
+      if (siteName)
+        params.site_name = siteName;
+      if (getStatus)
+        params.get_status = getStatus;
       const d = yield POST(this.ctx, `${this.baseURL}/admin/page-fetch`, params);
-      return d.page;
+      return d;
     });
   }
   siteGet() {
@@ -3333,25 +3453,97 @@ class Api {
       return json.data || {};
     });
   }
+  conf() {
+    return __async(this, null, function* () {
+      const data = yield POST(this.ctx, `${this.baseURL}/conf`);
+      const conf = data.frontend_conf || {};
+      if (conf.emoticons && typeof conf.emoticons === "string") {
+        conf.emoticons = conf.emoticons.trim();
+        if (conf.emoticons.startsWith("[") || conf.emoticons.startsWith("{")) {
+          conf.emoticons = JSON.parse(conf.emoticons);
+        }
+      }
+      return conf;
+    });
+  }
   captchaGet() {
     return __async(this, null, function* () {
-      const data = yield GET(this.ctx, `${this.baseURL}/captcha/refresh`);
+      const data = yield POST(this.ctx, `${this.baseURL}/captcha/refresh`);
       return data.img_data || "";
     });
   }
   captchaCheck(value) {
     return __async(this, null, function* () {
-      const data = yield GET(this.ctx, `${this.baseURL}/captcha/check`, { value });
+      const data = yield POST(this.ctx, `${this.baseURL}/captcha/check`, { value });
       return data.img_data || "";
     });
   }
+  captchaStatus() {
+    return __async(this, null, function* () {
+      const data = yield POST(this.ctx, `${this.baseURL}/captcha/status`);
+      return data || { is_pass: false };
+    });
+  }
+  cacheFlushAll() {
+    const params = { flush_all: true };
+    return POST(this.ctx, `${this.baseURL}/admin/cache-flush`, params);
+  }
+  cacheWarmUp() {
+    const params = {};
+    return POST(this.ctx, `${this.baseURL}/admin/cache-warm`, params);
+  }
 }
 const CaptchaChecker = {
-  request(that, inputVal) {
+  request(that, ctx, inputVal) {
     return new Api(that.ctx).captchaCheck(inputVal);
   },
-  body(that) {
-    const elem = createElement(`<span><img class="atk-captcha-img" src="${that.submitCaptchaImgData || ""}" alt="\u9A8C\u8BC1\u7801">\u6572\u5165\u9A8C\u8BC1\u7801\u7EE7\u7EED\uFF1A</span>`);
+  body(that, ctx) {
+    if (that.captchaConf.iframe) {
+      const $iframeWrap = createElement(`<div class="atk-checker-iframe-wrap"></div>`);
+      const $iframe = createElement(`<iframe class="atk-fade-in"></iframe>`);
+      $iframe.style.display = "none";
+      showLoading($iframeWrap, { transparentBg: true });
+      $iframe.src = `${that.ctx.conf.server}/api/captcha/get?t=${+new Date()}`;
+      $iframe.onload = () => {
+        $iframe.style.display = "";
+        hideLoading($iframeWrap);
+      };
+      $iframeWrap.append($iframe);
+      const $closeBtn = createElement(`<div class="atk-close-btn"><i class="atk-icon atk-icon-close"></i></div>`);
+      $iframeWrap.append($closeBtn);
+      ctx.hideInteractInput();
+      let stop = false;
+      const sleep = (ms) => new Promise((resolve) => {
+        window.setTimeout(() => {
+          resolve(null);
+        }, ms);
+      });
+      (function queryStatus() {
+        return __async(this, null, function* () {
+          yield sleep(1e3);
+          if (stop)
+            return;
+          let isPass = false;
+          try {
+            const resp = yield new Api(that.ctx).captchaStatus();
+            isPass = resp.is_pass;
+          } catch (e) {
+            isPass = false;
+          }
+          if (isPass) {
+            ctx.triggerSuccess();
+          } else {
+            queryStatus();
+          }
+        });
+      })();
+      $closeBtn.onclick = () => {
+        stop = true;
+        ctx.cancel();
+      };
+      return $iframeWrap;
+    }
+    const elem = createElement(`<span><img class="atk-captcha-img" src="${that.captchaConf.imgData || ""}" alt="\u9A8C\u8BC1\u7801">\u6572\u5165\u9A8C\u8BC1\u7801\u7EE7\u7EED\uFF1A</span>`);
     elem.querySelector(".atk-captcha-img").onclick = () => {
       const imgEl = elem.querySelector(".atk-captcha-img");
       new Api(that.ctx).captchaGet().then((imgData) => {
@@ -3362,16 +3554,16 @@ const CaptchaChecker = {
     };
     return elem;
   },
-  onSuccess(that, data, inputVal, formEl) {
-    that.submitCaptchaVal = inputVal;
+  onSuccess(that, ctx, data, inputVal, formEl) {
+    that.captchaConf.val = inputVal;
   },
-  onError(that, err, inputVal, formEl) {
+  onError(that, ctx, err, inputVal, formEl) {
     formEl.querySelector(".atk-captcha-img").click();
   }
 };
 const AdminChecker = {
   inputType: "password",
-  request(that, inputVal) {
+  request(that, ctx, inputVal) {
     const data = {
       name: that.ctx.user.data.nick,
       email: that.ctx.user.data.email,
@@ -3379,33 +3571,33 @@ const AdminChecker = {
     };
     return new Api(that.ctx).login(data.name, data.email, data.password);
   },
-  body() {
+  body(that, ctx) {
     return createElement("<span>\u6572\u5165\u5BC6\u7801\u6765\u9A8C\u8BC1\u7BA1\u7406\u5458\u8EAB\u4EFD\uFF1A</span>");
   },
-  onSuccess(that, userToken, inputVal, formEl) {
+  onSuccess(that, ctx, userToken, inputVal, formEl) {
     that.ctx.user.data.isAdmin = true;
     that.ctx.user.data.token = userToken;
     that.ctx.user.save();
     that.ctx.trigger("user-changed", that.ctx.user.data);
     that.ctx.trigger("list-reload");
   },
-  onError(that, err, inputVal, formEl) {
+  onError(that, ctx, err, inputVal, formEl) {
   }
 };
 class CheckerLauncher {
   constructor(ctx) {
     __publicField(this, "ctx");
     __publicField(this, "launched", []);
-    __publicField(this, "submitCaptchaVal");
-    __publicField(this, "submitCaptchaImgData");
+    __publicField(this, "captchaConf", {});
     this.ctx = ctx;
     this.initEventBind();
   }
   initEventBind() {
     this.ctx.on("checker-captcha", (conf) => {
-      if (conf.imgData) {
-        this.submitCaptchaImgData = conf.imgData;
-      }
+      if (conf.imgData)
+        this.captchaConf.imgData = conf.imgData;
+      if (conf.iframe)
+        this.captchaConf.iframe = conf.iframe;
       this.fire(CaptchaChecker, conf);
     });
     this.ctx.on("checker-admin", (conf) => {
@@ -3419,12 +3611,31 @@ class CheckerLauncher {
     const layer = new Layer(this.ctx, `checker-${new Date().getTime()}`);
     layer.setMaskClickHide(false);
     layer.show();
+    let hideInteractInput = false;
+    const checkerCtx = {
+      getLayer: () => layer,
+      hideInteractInput: () => {
+        hideInteractInput = true;
+      },
+      triggerSuccess: () => {
+        this.close(checker, layer);
+        if (checker.onSuccess)
+          checker.onSuccess(this, checkerCtx, "", "", formEl);
+        if (payload.onSuccess)
+          payload.onSuccess("", dialog.$el);
+      },
+      cancel: () => {
+        this.close(checker, layer);
+        if (payload.onCancel)
+          payload.onCancel();
+      }
+    };
     const formEl = createElement();
-    formEl.appendChild(checker.body(this));
-    const input = createElement(`<input id="check" type="${checker.inputType || "text"}" autocomplete="off" required placeholder="">`);
-    formEl.appendChild(input);
-    setTimeout(() => input.focus(), 80);
-    input.onkeyup = (evt) => {
+    formEl.appendChild(checker.body(this, checkerCtx));
+    const $input = createElement(`<input id="check" type="${checker.inputType || "text"}" autocomplete="off" required placeholder="">`);
+    formEl.appendChild($input);
+    setTimeout(() => $input.focus(), 80);
+    $input.onkeyup = (evt) => {
       if (evt.key === "Enter" || evt.keyCode === 13) {
         evt.preventDefault();
         layer.getEl().querySelector('button[data-action="confirm"]').click();
@@ -3433,7 +3644,7 @@ class CheckerLauncher {
     let btnTextOrg;
     const dialog = new Dialog(formEl);
     dialog.setYes((btnEl) => {
-      const inputVal = input.value.trim();
+      const inputVal = $input.value.trim();
       if (!btnTextOrg)
         btnTextOrg = btnEl.innerText;
       const btnTextSet = (btnText) => {
@@ -3445,18 +3656,18 @@ class CheckerLauncher {
         btnEl.classList.remove("error");
       };
       btnEl.innerText = "\u52A0\u8F7D\u4E2D...";
-      checker.request(this, inputVal).then((data) => {
-        this.done(checker, layer);
+      checker.request(this, checkerCtx, inputVal).then((data) => {
+        this.close(checker, layer);
         if (checker.onSuccess)
-          checker.onSuccess(this, data, inputVal, formEl);
+          checker.onSuccess(this, checkerCtx, data, inputVal, formEl);
         if (payload.onSuccess)
           payload.onSuccess(inputVal, dialog.$el);
       }).catch((err) => {
         btnTextSet(String(err.msg || String(err)));
         if (checker.onError)
-          checker.onError(this, err, inputVal, formEl);
+          checker.onError(this, checkerCtx, err, inputVal, formEl);
         const tf = setTimeout(() => btnTextRestore(), 3e3);
-        input.onfocus = () => {
+        $input.onfocus = () => {
           btnTextRestore();
           clearTimeout(tf);
         };
@@ -3464,16 +3675,20 @@ class CheckerLauncher {
       return false;
     });
     dialog.setNo(() => {
-      this.done(checker, layer);
+      this.close(checker, layer);
       if (payload.onCancel)
         payload.onCancel();
       return false;
     });
+    if (hideInteractInput) {
+      $input.style.display = "none";
+      dialog.$el.querySelector(".atk-layer-dialog-actions").style.display = "none";
+    }
     layer.getEl().append(dialog.$el);
     if (payload.onMount)
       payload.onMount(dialog.$el);
   }
-  done(checker, layer) {
+  close(checker, layer) {
     layer.disposeNow();
     this.launched = this.launched.filter((c) => c !== checker);
   }
@@ -3498,16 +3713,28 @@ class EmoticonsPlug extends EditorPlug {
     __publicField(this, "emoticons", []);
     __publicField(this, "$grpWrap");
     __publicField(this, "$grpSwitcher");
+    __publicField(this, "loadingTask", null);
+    __publicField(this, "isListLoaded", false);
+    __publicField(this, "isImgLoaded", false);
     this.editor = editor2;
     this.$el = createElement(`<div class="atk-editor-plug-emoticons"></div>`);
-    this.init();
   }
-  init() {
+  loadEmoticonsData() {
     return __async(this, null, function* () {
-      showLoading(this.$el);
-      this.emoticons = yield this.handleData(this.ctx.conf.emoticons);
-      hideLoading(this.$el);
-      this.initEmoticonsList();
+      if (this.isListLoaded)
+        return;
+      if (this.loadingTask !== null) {
+        yield this.loadingTask;
+        return;
+      }
+      this.loadingTask = (() => __async(this, null, function* () {
+        showLoading(this.$el);
+        this.emoticons = yield this.handleData(this.ctx.conf.emoticons);
+        hideLoading(this.$el);
+        this.loadingTask = null;
+        this.isListLoaded = true;
+      }))();
+      yield this.loadingTask;
     });
   }
   handleData(data) {
@@ -3556,7 +3783,6 @@ class EmoticonsPlug extends EditorPlug {
         }
       });
       data = data.filter((item) => typeof item === "object" && !Array.isArray(item) && !!item && !!item.name);
-      console.log(data);
       this.solveNullKey(data);
       this.solveSameKey(data);
       return data;
@@ -3687,9 +3913,16 @@ class EmoticonsPlug extends EditorPlug {
   changeListHeight() {
   }
   onShow() {
-    setTimeout(() => {
-      this.changeListHeight();
-    }, 30);
+    (() => __async(this, null, function* () {
+      yield this.loadEmoticonsData();
+      if (!this.isImgLoaded) {
+        this.initEmoticonsList();
+        this.isImgLoaded = true;
+      }
+      setTimeout(() => {
+        this.changeListHeight();
+      }, 30);
+    }))();
   }
   onHide() {
     this.$el.parentElement.style.height = "";
@@ -3757,6 +3990,7 @@ class Editor extends Component {
     __publicField(this, "$bottom");
     __publicField(this, "$plugBtnWrap");
     __publicField(this, "$imgUploadBtn");
+    __publicField(this, "$imgUploadInput");
     __publicField(this, "$submitBtn");
     __publicField(this, "$notifyWrap");
     __publicField(this, "replyComment", null);
@@ -3811,15 +4045,26 @@ class Editor extends Component {
       const inputEl = this.getInputEl(field);
       if (inputEl && inputEl instanceof HTMLInputElement) {
         inputEl.value = this.user.data[field] || "";
-        inputEl.addEventListener("input", () => this.onHeaderInputChanged(field, inputEl));
+        inputEl.addEventListener("input", () => this.onHeaderInput(field, inputEl));
       }
     });
+    const $linkInput = this.getInputEl("link");
+    if ($linkInput) {
+      $linkInput.addEventListener("change", () => {
+        const link = $linkInput.value.trim();
+        if (!!link && !/^(http|https):\/\//.test(link)) {
+          $linkInput.value = `https://${link}`;
+          this.user.data.link = $linkInput.value;
+          this.saveUser();
+        }
+      });
+    }
   }
   getInputEl(field) {
     const inputEl = this.$header.querySelector(`[name="${field}"]`);
     return inputEl;
   }
-  onHeaderInputChanged(field, inputEl) {
+  onHeaderInput(field, inputEl) {
     this.user.data[field] = inputEl.value.trim();
     if (field === "nick" || field === "email") {
       this.user.data.token = "";
@@ -3892,6 +4137,13 @@ class Editor extends Component {
     this.LOADABLE_PLUG_LIST.forEach((PlugObj) => {
       const btnElem = createElement(`<span class="atk-plug-btn" data-plug-name="${PlugObj.Name}">${PlugObj.BtnHTML}</span>`);
       this.$plugBtnWrap.appendChild(btnElem);
+      if (PlugObj.Name === "emoticons") {
+        const emoPlug = new PlugObj(this);
+        this.plugList[PlugObj.Name] = emoPlug;
+        window.setTimeout(() => {
+          emoPlug.loadEmoticonsData();
+        }, 1e3);
+      }
       btnElem.addEventListener("click", () => {
         let plug = this.plugList[PlugObj.Name];
         if (!plug) {
@@ -3936,10 +4188,13 @@ class Editor extends Component {
   initImgUpload() {
     this.$imgUploadBtn = createElement(`<span class="atk-plug-btn">\u56FE\u7247</span>`);
     this.$plugBtnWrap.querySelector('[data-plug-name="preview"]').before(this.$imgUploadBtn);
+    this.$imgUploadInput = document.createElement("input");
+    this.$imgUploadInput.type = "file";
+    this.$imgUploadInput.style.display = "none";
+    this.$imgUploadInput.accept = this.allowImgExts.map((o) => `.${o}`).join(",");
+    this.$imgUploadBtn.after(this.$imgUploadInput);
     this.$imgUploadBtn.onclick = () => {
-      const $input = document.createElement("input");
-      $input.type = "file";
-      $input.accept = this.allowImgExts.map((o) => `.${o}`).join(",");
+      const $input = this.$imgUploadInput;
       $input.onchange = () => {
         (() => __async(this, null, function* () {
           if (!$input.files || $input.files.length === 0)
@@ -4043,7 +4298,9 @@ class Editor extends Component {
     if (!!this.plugList && !!this.plugList.preview) {
       this.plugList.preview.updateContent();
     }
-    this.adjustTextareaHeight();
+    window.setTimeout(() => {
+      this.adjustTextareaHeight();
+    }, 80);
   }
   clearEditor() {
     this.setContent("");
@@ -4128,7 +4385,7 @@ class Editor extends Component {
           site_name: this.replyComment === null ? this.ctx.conf.site : this.replyComment.site_name
         });
         if (this.replyComment !== null && this.replyComment.page_key !== this.ctx.conf.pageKey) {
-          window.open(`${this.replyComment.page_key}#atk-comment-${nComment.id}`);
+          window.open(`${this.replyComment.page_url}#atk-comment-${nComment.id}`);
         }
         this.ctx.trigger("list-insert", nComment);
         this.clearEditor();
@@ -4171,6 +4428,7 @@ class Editor extends Component {
     const $travelPlace = createElement("<div></div>");
     $afterEl.after($travelPlace);
     $travelPlace.replaceWith(this.$el);
+    this.$el.classList.add("atk-fade-in");
   }
   travelBack() {
     var _a;
@@ -4181,252 +4439,201 @@ class Editor extends Component {
     if (this.replyComment !== null)
       this.cancelReply();
   }
+  initRemoteEmoticons() {
+  }
 }
 var list = "";
 var ListHTML = '<div class="atk-list">\n  <div class="atk-list-header">\n    <div class="atk-comment-count">\n      <div class="atk-text">\n        <span class="atk-comment-count-num">0</span>\n        \u6761\u8BC4\u8BBA\n      </div>\n    </div>\n    <div class="atk-right-action">\n      <span data-action="admin-close-comment" class="atk-hide" atk-only-admin-show>\u5173\u95ED\u8BC4\u8BBA</span>\n      <span data-action="open-sidebar" class="atk-hide atk-on">\n        <span class="atk-unread-badge" style="display: none;"></span>\n        <div class="atk-text">\u901A\u77E5\u4E2D\u5FC3</div>\n      </span>\n    </div>\n  </div>\n  <div class="atk-list-body"></div>\n  <div class="atk-list-footer">\n    <div class="atk-copyright"></div>\n  </div>\n</div>\n';
 var comment = "";
-var win = window || {};
-var nav = navigator || {};
+const win = window || {};
+const nav = navigator || {};
 function Detect(userAgent) {
-  var u = userAgent || nav.userAgent;
-  var _this = this;
-  var match = {
-    Trident: u.indexOf("Trident") > -1 || u.indexOf("NET CLR") > -1,
-    Presto: u.indexOf("Presto") > -1,
-    WebKit: u.indexOf("AppleWebKit") > -1,
-    Gecko: u.indexOf("Gecko/") > -1,
-    Safari: u.indexOf("Safari") > -1,
-    Chrome: u.indexOf("Chrome") > -1 || u.indexOf("CriOS") > -1,
-    IE: u.indexOf("MSIE") > -1 || u.indexOf("Trident") > -1,
-    Edge: u.indexOf("Edge") > -1,
-    Firefox: u.indexOf("Firefox") > -1 || u.indexOf("FxiOS") > -1,
-    "Firefox Focus": u.indexOf("Focus") > -1,
-    Chromium: u.indexOf("Chromium") > -1,
-    Opera: u.indexOf("Opera") > -1 || u.indexOf("OPR") > -1,
-    Vivaldi: u.indexOf("Vivaldi") > -1,
-    Yandex: u.indexOf("YaBrowser") > -1,
-    Kindle: u.indexOf("Kindle") > -1 || u.indexOf("Silk/") > -1,
-    360: u.indexOf("360EE") > -1 || u.indexOf("360SE") > -1,
-    UC: u.indexOf("UC") > -1 || u.indexOf(" UBrowser") > -1,
-    QQBrowser: u.indexOf("QQBrowser") > -1,
-    QQ: u.indexOf("QQ/") > -1,
-    Baidu: u.indexOf("Baidu") > -1 || u.indexOf("BIDUBrowser") > -1,
-    Maxthon: u.indexOf("Maxthon") > -1,
-    Sogou: u.indexOf("MetaSr") > -1 || u.indexOf("Sogou") > -1,
-    LBBROWSER: u.indexOf("LBBROWSER") > -1,
-    "2345Explorer": u.indexOf("2345Explorer") > -1,
-    TheWorld: u.indexOf("TheWorld") > -1,
-    XiaoMi: u.indexOf("MiuiBrowser") > -1,
-    Quark: u.indexOf("Quark") > -1,
-    Qiyu: u.indexOf("Qiyu") > -1,
-    Wechat: u.indexOf("MicroMessenger") > -1,
-    Taobao: u.indexOf("AliApp(TB") > -1,
-    Alipay: u.indexOf("AliApp(AP") > -1,
-    Weibo: u.indexOf("Weibo") > -1,
-    Douban: u.indexOf("com.douban.frodo") > -1,
-    Suning: u.indexOf("SNEBUY-APP") > -1,
-    iQiYi: u.indexOf("IqiyiApp") > -1,
-    Windows: u.indexOf("Windows") > -1,
-    Linux: u.indexOf("Linux") > -1 || u.indexOf("X11") > -1,
-    "Mac OS": u.indexOf("Macintosh") > -1,
-    Android: u.indexOf("Android") > -1 || u.indexOf("Adr") > -1,
-    Ubuntu: u.indexOf("Ubuntu") > -1,
-    FreeBSD: u.indexOf("FreeBSD") > -1,
-    Debian: u.indexOf("Debian") > -1,
-    "Windows Phone": u.indexOf("IEMobile") > -1 || u.indexOf("Windows Phone") > -1,
-    BlackBerry: u.indexOf("BlackBerry") > -1 || u.indexOf("RIM") > -1,
-    MeeGo: u.indexOf("MeeGo") > -1,
-    Symbian: u.indexOf("Symbian") > -1,
-    iOS: u.indexOf("like Mac OS X") > -1,
-    "Chrome OS": u.indexOf("CrOS") > -1,
-    WebOS: u.indexOf("hpwOS") > -1,
-    Mobile: u.indexOf("Mobi") > -1 || u.indexOf("iPh") > -1 || u.indexOf("480") > -1,
-    Tablet: u.indexOf("Tablet") > -1 || u.indexOf("Pad") > -1 || u.indexOf("Nexus 7") > -1
+  const u = String(userAgent || nav.userAgent);
+  const dest = {
+    os: "",
+    osVersion: "",
+    engine: "",
+    browser: "",
+    device: "",
+    language: "",
+    version: ""
   };
-  if (match.Mobile) {
-    match.Mobile = !(u.indexOf("iPad") > -1);
+  const engineMatch = {
+    Trident: u.includes("Trident") || u.includes("NET CLR"),
+    Presto: u.includes("Presto"),
+    WebKit: u.includes("AppleWebKit"),
+    Gecko: u.includes("Gecko/")
+  };
+  const browserMatch = {
+    Safari: u.includes("Safari"),
+    Chrome: u.includes("Chrome") || u.includes("CriOS"),
+    IE: u.includes("MSIE") || u.includes("Trident"),
+    Edge: u.includes("Edge") || u.includes("Edg"),
+    Firefox: u.includes("Firefox") || u.includes("FxiOS"),
+    "Firefox Focus": u.includes("Focus"),
+    Chromium: u.includes("Chromium"),
+    Opera: u.includes("Opera") || u.includes("OPR"),
+    Vivaldi: u.includes("Vivaldi"),
+    Yandex: u.includes("YaBrowser"),
+    Kindle: u.includes("Kindle") || u.includes("Silk/"),
+    360: u.includes("360EE") || u.includes("360SE"),
+    UC: u.includes("UC") || u.includes(" UBrowser"),
+    QQBrowser: u.includes("QQBrowser"),
+    QQ: u.includes("QQ/"),
+    Baidu: u.includes("Baidu") || u.includes("BIDUBrowser"),
+    Maxthon: u.includes("Maxthon"),
+    Sogou: u.includes("MetaSr") || u.includes("Sogou"),
+    LBBROWSER: u.includes("LBBROWSER"),
+    "2345Explorer": u.includes("2345Explorer"),
+    TheWorld: u.includes("TheWorld"),
+    MIUI: u.includes("MiuiBrowser"),
+    Quark: u.includes("Quark"),
+    Qiyu: u.includes("Qiyu"),
+    Wechat: u.includes("MicroMessenger"),
+    Taobao: u.includes("AliApp(TB"),
+    Alipay: u.includes("AliApp(AP"),
+    Weibo: u.includes("Weibo"),
+    Douban: u.includes("com.douban.frodo"),
+    Suning: u.includes("SNEBUY-APP"),
+    iQiYi: u.includes("IqiyiApp")
+  };
+  const osMatch = {
+    Windows: u.includes("Windows"),
+    Linux: u.includes("Linux") || u.includes("X11"),
+    "macOS": u.includes("Macintosh"),
+    Android: u.includes("Android") || u.includes("Adr"),
+    Ubuntu: u.includes("Ubuntu"),
+    FreeBSD: u.includes("FreeBSD"),
+    Debian: u.includes("Debian"),
+    "Windows Phone": u.includes("IEMobile") || u.includes("Windows Phone"),
+    BlackBerry: u.includes("BlackBerry") || u.includes("RIM"),
+    MeeGo: u.includes("MeeGo"),
+    Symbian: u.includes("Symbian"),
+    iOS: u.includes("like Mac OS X"),
+    "Chrome OS": u.includes("CrOS"),
+    WebOS: u.includes("hpwOS")
+  };
+  const deviceMatch = {
+    Mobile: u.includes("Mobi") || u.includes("iPh") || u.includes("480"),
+    Tablet: u.includes("Tablet") || u.includes("Pad") || u.includes("Nexus 7")
+  };
+  if (deviceMatch.Mobile) {
+    deviceMatch.Mobile = !u.includes("iPad");
+  } else if (browserMatch.Chrome && u.includes("Edg")) {
+    browserMatch.Chrome = false;
+    browserMatch.Edge = true;
   } else if (win.showModalDialog && win.chrome) {
-    match["360"] = true;
+    browserMatch.Chrome = false;
+    browserMatch["360"] = true;
   }
-  var hash = {
-    engine: ["WebKit", "Trident", "Gecko", "Presto"],
-    browser: ["Safari", "Chrome", "Edge", "IE", "Firefox", "Firefox Focus", "Chromium", "Opera", "Vivaldi", "Yandex", "Kindle", "360", "UC", "QQBrowser", "QQ", "Baidu", "Maxthon", "Sogou", "LBBROWSER", "2345Explorer", "TheWorld", "XiaoMi", "Quark", "Qiyu", "Wechat", "Taobao", "Alipay", "Weibo", "Douban", "Suning", "iQiYi"],
-    os: ["Windows", "Linux", "Mac OS", "Android", "Ubuntu", "FreeBSD", "Debian", "iOS", "Windows Phone", "BlackBerry", "MeeGo", "Symbian", "Chrome OS", "WebOS"],
-    device: ["Mobile", "Tablet"]
-  };
-  _this.device = "PC";
-  _this.language = function() {
-    var g = nav.browserLanguage || nav.language;
-    var arr = g.split("-");
-    if (arr[1]) {
+  dest.device = "PC";
+  dest.language = (() => {
+    const g = nav.browserLanguage || nav.language;
+    const arr = g.split("-");
+    if (arr[1])
       arr[1] = arr[1].toUpperCase();
-    }
     return arr.join("_");
-  }();
-  for (var s in hash) {
-    for (var i = 0; i < hash[s].length; i++) {
-      var value = hash[s][i];
-      if (match[value]) {
-        _this[s] = value;
-      }
-    }
-  }
-  var osVersion = {
-    Windows: function() {
-      var v = u.replace(/^.*Windows NT ([\d.]+);.*$/, "$1");
-      var hash2 = {
-        6.4: "10",
-        6.3: "8.1",
-        6.2: "8",
-        6.1: "7",
+  })();
+  const hash = {
+    engine: engineMatch,
+    browser: browserMatch,
+    os: osMatch,
+    device: deviceMatch
+  };
+  Object.entries(hash).forEach(([type, match]) => {
+    Object.entries(match).forEach(([name, result]) => {
+      if (result === true)
+        dest[type] = name;
+    });
+  });
+  const osVersion = {
+    Windows: () => {
+      const v = u.replace(/^.*Windows NT ([\d.]+);.*$/, "$1");
+      const wvHash = {
+        "6.4": "10",
+        "6.3": "8.1",
+        "6.2": "8",
+        "6.1": "7",
         "6.0": "Vista",
-        5.2: "XP",
-        5.1: "XP",
+        "5.2": "XP",
+        "5.1": "XP",
         "5.0": "2000",
         "10.0": "10",
         "11.0": "11"
       };
-      return hash2[v] || v;
+      return wvHash[v] || v;
     },
-    Android: function() {
-      return u.replace(/^.*Android ([\d.]+);.*$/, "$1");
-    },
-    iOS: function() {
-      return u.replace(/^.*OS ([\d_]+) like.*$/, "$1").replace(/_/g, ".");
-    },
-    Debian: function() {
-      return u.replace(/^.*Debian\/([\d.]+).*$/, "$1");
-    },
-    "Windows Phone": function() {
-      return u.replace(/^.*Windows Phone( OS)? ([\d.]+);.*$/, "$2");
-    },
-    "Mac OS": function() {
-      return u.replace(/^.*Mac OS X ([\d_]+).*$/, "$1").replace(/_/g, ".");
-    },
-    WebOS: function() {
-      return u.replace(/^.*hpwOS\/([\d.]+);.*$/, "$1");
-    }
+    Android: () => u.replace(/^.*Android ([\d.]+);.*$/, "$1"),
+    iOS: () => u.replace(/^.*OS ([\d_]+) like.*$/, "$1").replace(/_/g, "."),
+    Debian: () => u.replace(/^.*Debian\/([\d.]+).*$/, "$1"),
+    "Windows Phone": () => u.replace(/^.*Windows Phone( OS)? ([\d.]+);.*$/, "$2"),
+    "macOS": () => u.replace(/^.*Mac OS X ([\d_]+).*$/, "$1").replace(/_/g, "."),
+    WebOS: () => u.replace(/^.*hpwOS\/([\d.]+);.*$/, "$1")
   };
-  _this.osVersion = "";
-  if (osVersion[_this.os]) {
-    _this.osVersion = osVersion[_this.os]();
-    if (_this.osVersion === u) {
-      _this.osVersion = "";
+  dest.osVersion = "";
+  if (osVersion[dest.os]) {
+    dest.osVersion = osVersion[dest.os]();
+    if (dest.osVersion === u) {
+      dest.osVersion = "";
     }
   }
-  var version = {
-    Safari: function() {
-      return u.replace(/^.*Version\/([\d.]+).*$/, "$1");
-    },
-    Chrome: function() {
-      return u.replace(/^.*Chrome\/([\d.]+).*$/, "$1").replace(/^.*CriOS\/([\d.]+).*$/, "$1");
-    },
-    IE: function() {
-      return u.replace(/^.*MSIE ([\d.]+).*$/, "$1").replace(/^.*rv:([\d.]+).*$/, "$1");
-    },
-    Edge: function() {
-      return u.replace(/^.*Edge\/([\d.]+).*$/, "$1");
-    },
-    Firefox: function() {
-      return u.replace(/^.*Firefox\/([\d.]+).*$/, "$1").replace(/^.*FxiOS\/([\d.]+).*$/, "$1");
-    },
-    "Firefox Focus": function() {
-      return u.replace(/^.*Focus\/([\d.]+).*$/, "$1");
-    },
-    Chromium: function() {
-      return u.replace(/^.*Chromium\/([\d.]+).*$/, "$1");
-    },
-    Opera: function() {
-      return u.replace(/^.*Opera\/([\d.]+).*$/, "$1").replace(/^.*OPR\/([\d.]+).*$/, "$1");
-    },
-    Vivaldi: function() {
-      return u.replace(/^.*Vivaldi\/([\d.]+).*$/, "$1");
-    },
-    Yandex: function() {
-      return u.replace(/^.*YaBrowser\/([\d.]+).*$/, "$1");
-    },
-    Kindle: function() {
-      return u.replace(/^.*Version\/([\d.]+).*$/, "$1");
-    },
-    Maxthon: function() {
-      return u.replace(/^.*Maxthon\/([\d.]+).*$/, "$1");
-    },
-    QQBrowser: function() {
-      return u.replace(/^.*QQBrowser\/([\d.]+).*$/, "$1");
-    },
-    QQ: function() {
-      return u.replace(/^.*QQ\/([\d.]+).*$/, "$1");
-    },
-    Baidu: function() {
-      return u.replace(/^.*BIDUBrowser[\s/]([\d.]+).*$/, "$1");
-    },
-    UC: function() {
-      return u.replace(/^.*UC?Browser\/([\d.]+).*$/, "$1");
-    },
-    Sogou: function() {
-      return u.replace(/^.*SE ([\d.X]+).*$/, "$1").replace(/^.*SogouMobileBrowser\/([\d.]+).*$/, "$1");
-    },
-    "2345Explorer": function() {
-      return u.replace(/^.*2345Explorer\/([\d.]+).*$/, "$1");
-    },
-    TheWorld: function() {
-      return u.replace(/^.*TheWorld ([\d.]+).*$/, "$1");
-    },
-    XiaoMi: function() {
-      return u.replace(/^.*MiuiBrowser\/([\d.]+).*$/, "$1");
-    },
-    Quark: function() {
-      return u.replace(/^.*Quark\/([\d.]+).*$/, "$1");
-    },
-    Qiyu: function() {
-      return u.replace(/^.*Qiyu\/([\d.]+).*$/, "$1");
-    },
-    Wechat: function() {
-      return u.replace(/^.*MicroMessenger\/([\d.]+).*$/, "$1");
-    },
-    Taobao: function() {
-      return u.replace(/^.*AliApp\(TB\/([\d.]+).*$/, "$1");
-    },
-    Alipay: function() {
-      return u.replace(/^.*AliApp\(AP\/([\d.]+).*$/, "$1");
-    },
-    Weibo: function() {
-      return u.replace(/^.*weibo__([\d.]+).*$/, "$1");
-    },
-    Douban: function() {
-      return u.replace(/^.*com.douban.frodo\/([\d.]+).*$/, "$1");
-    },
-    Suning: function() {
-      return u.replace(/^.*SNEBUY-APP([\d.]+).*$/, "$1");
-    },
-    iQiYi: function() {
-      return u.replace(/^.*IqiyiVersion\/([\d.]+).*$/, "$1");
-    }
+  const version = {
+    Safari: () => u.replace(/^.*Version\/([\d.]+).*$/, "$1"),
+    Chrome: () => u.replace(/^.*Chrome\/([\d.]+).*$/, "$1").replace(/^.*CriOS\/([\d.]+).*$/, "$1"),
+    IE: () => u.replace(/^.*MSIE ([\d.]+).*$/, "$1").replace(/^.*rv:([\d.]+).*$/, "$1"),
+    Edge: () => u.replace(/^.*(Edge|Edg|Edg[A-Z]{1})\/([\d.]+).*$/, "$2"),
+    Firefox: () => u.replace(/^.*Firefox\/([\d.]+).*$/, "$1").replace(/^.*FxiOS\/([\d.]+).*$/, "$1"),
+    "Firefox Focus": () => u.replace(/^.*Focus\/([\d.]+).*$/, "$1"),
+    Chromium: () => u.replace(/^.*Chromium\/([\d.]+).*$/, "$1"),
+    Opera: () => u.replace(/^.*Opera\/([\d.]+).*$/, "$1").replace(/^.*OPR\/([\d.]+).*$/, "$1"),
+    Vivaldi: () => u.replace(/^.*Vivaldi\/([\d.]+).*$/, "$1"),
+    Yandex: () => u.replace(/^.*YaBrowser\/([\d.]+).*$/, "$1"),
+    Kindle: () => u.replace(/^.*Version\/([\d.]+).*$/, "$1"),
+    Maxthon: () => u.replace(/^.*Maxthon\/([\d.]+).*$/, "$1"),
+    QQBrowser: () => u.replace(/^.*QQBrowser\/([\d.]+).*$/, "$1"),
+    QQ: () => u.replace(/^.*QQ\/([\d.]+).*$/, "$1"),
+    Baidu: () => u.replace(/^.*BIDUBrowser[\s/]([\d.]+).*$/, "$1"),
+    UC: () => u.replace(/^.*UC?Browser\/([\d.]+).*$/, "$1"),
+    Sogou: () => u.replace(/^.*SE ([\d.X]+).*$/, "$1").replace(/^.*SogouMobileBrowser\/([\d.]+).*$/, "$1"),
+    "2345Explorer": () => u.replace(/^.*2345Explorer\/([\d.]+).*$/, "$1"),
+    TheWorld: () => u.replace(/^.*TheWorld ([\d.]+).*$/, "$1"),
+    MIUI: () => u.replace(/^.*MiuiBrowser\/([\d.]+).*$/, "$1"),
+    Quark: () => u.replace(/^.*Quark\/([\d.]+).*$/, "$1"),
+    Qiyu: () => u.replace(/^.*Qiyu\/([\d.]+).*$/, "$1"),
+    Wechat: () => u.replace(/^.*MicroMessenger\/([\d.]+).*$/, "$1"),
+    Taobao: () => u.replace(/^.*AliApp\(TB\/([\d.]+).*$/, "$1"),
+    Alipay: () => u.replace(/^.*AliApp\(AP\/([\d.]+).*$/, "$1"),
+    Weibo: () => u.replace(/^.*weibo__([\d.]+).*$/, "$1"),
+    Douban: () => u.replace(/^.*com.douban.frodo\/([\d.]+).*$/, "$1"),
+    Suning: () => u.replace(/^.*SNEBUY-APP([\d.]+).*$/, "$1"),
+    iQiYi: () => u.replace(/^.*IqiyiVersion\/([\d.]+).*$/, "$1")
   };
-  _this.version = "";
-  if (version[_this.browser]) {
-    _this.version = version[_this.browser]();
-    if (_this.version === u) {
-      _this.version = "";
+  dest.version = "";
+  if (version[dest.browser]) {
+    dest.version = version[dest.browser]();
+    if (dest.version === u) {
+      dest.version = "";
     }
   }
-  if (_this.version.indexOf(".")) {
-    _this.version = _this.version.substring(0, _this.version.indexOf("."));
+  if (dest.version.indexOf(".")) {
+    dest.version = dest.version.substring(0, dest.version.indexOf("."));
   }
-  if (_this.browser === "Edge") {
-    _this.engine = "EdgeHTML";
-  } else if (_this.browser === "Chrome" && parseInt(_this.version) > 27) {
-    _this.engine = "Blink";
-  } else if (_this.browser === "Opera" && parseInt(_this.version) > 12) {
-    _this.engine = "Blink";
-  } else if (_this.browser === "Yandex") {
-    _this.engine = "Blink";
-  } else if (_this.browser === void 0) {
-    _this.browser = "Unknow App";
+  if (dest.os === "iOS" && u.includes("iPad")) {
+    dest.os = "iPadOS";
+  } else if (dest.browser === "Edge" && !u.includes("Edg")) {
+    dest.engine = "EdgeHTML";
+  } else if (dest.browser === "MIUI") {
+    dest.os = "Android";
+  } else if (dest.browser === "Chrome" && Number(dest.version) > 27) {
+    dest.engine = "Blink";
+  } else if (dest.browser === "Opera" && Number(dest.version) > 12) {
+    dest.engine = "Blink";
+  } else if (dest.browser === "Yandex") {
+    dest.engine = "Blink";
+  } else if (dest.browser === void 0) {
+    dest.browser = "Unknow App";
   }
-}
-function detectFactory(u) {
-  return new Detect(u);
+  return dest;
 }
 var CommentHTML = '<div class="atk-comment-wrap">\n  <div class="atk-comment">\n    <div class="atk-avatar"></div>\n    <div class="atk-main">\n      <div class="atk-header">\n        <span class="atk-item atk-nick"></span>\n        <span class="atk-item atk-badge"></span>\n        <span class="atk-item atk-date"></span>\n      </div>\n      <div class="atk-body">\n        <div class="atk-content"></div>\n      </div>\n      <div class="atk-footer">\n        <div class="atk-actions"></div>\n      </div>\n    </div>\n  </div>\n</div>\n';
 class ActionBtn {
@@ -4798,7 +5005,7 @@ class Comment extends Component {
     });
   }
   getIsRoot() {
-    return this.parent === null;
+    return this.data.rid === 0;
   }
   getChildren() {
     return this.children;
@@ -4852,11 +5059,11 @@ class Comment extends Component {
     return timeAgo(new Date(this.data.date));
   }
   getUserUaBrowser() {
-    const info = detectFactory(this.data.ua);
+    const info = Detect(this.data.ua);
     return `${info.browser} ${info.version}`;
   }
   getUserUaOS() {
-    const info = detectFactory(this.data.ua);
+    const info = Detect(this.data.ua);
     return `${info.os} ${info.osVersion}`;
   }
   playFadeInAnim() {
@@ -5014,7 +5221,7 @@ class Pagination {
     this.$el = createElement(`<div class="atk-pagination-wrap">
         <div class="atk-pagination">
           <div class="atk-btn atk-btn-prev">Prev</div>
-          <input type="text" class="atk-input" />
+          <input type="text" class="atk-input" aria-label="Enter the number of page" />
           <div class="atk-btn atk-btn-next">Next</div>
         </div>
       </div>`);
@@ -5193,6 +5400,7 @@ class ReadMoreBtn {
       this.hide();
   }
 }
+const backendMinVersion = "2.1.4";
 class ListLite extends Component {
   constructor(ctx) {
     super(ctx);
@@ -5218,6 +5426,8 @@ class ListLite extends Component {
       <div class="atk-list-comments-wrap"></div>
     </div>`);
     this.$commentsWrap = this.$el.querySelector(".atk-list-comments-wrap");
+    if (ctx.conf.noComment)
+      this.noCommentText = ctx.conf.noComment;
     window.setInterval(() => {
       this.$el.querySelectorAll("[data-atk-comment-date]").forEach((el) => {
         const date = el.getAttribute("data-atk-comment-date");
@@ -5257,7 +5467,7 @@ class ListLite extends Component {
       try {
         listData = yield new Api(this.ctx).get(offset, this.pageSize, this.flatMode, this.paramsEditor);
       } catch (e) {
-        this.onError(e.msg || String(e), offset);
+        this.onError(e.msg || String(e), offset, e.data);
         throw e;
       } finally {
         hideLoading$1();
@@ -5274,11 +5484,15 @@ class ListLite extends Component {
     });
   }
   onLoad(data, offset) {
+    var _a, _b;
     if (this.pageMode === "pagination") {
       this.clearAllComments();
     }
     this.data = data;
-    if (this.ctx.conf.versionCheck && this.versionCheck(data.api_version))
+    const feMinVersion = ((_a = data.api_version) == null ? void 0 : _a.fe_min_version) || "0.0.0";
+    if (this.ctx.conf.versionCheck && this.versionCheck("\u524D\u7AEF", feMinVersion, "2.2.8"))
+      return;
+    if (this.ctx.conf.versionCheck && this.versionCheck("\u540E\u7AEF", backendMinVersion, (_b = data.api_version) == null ? void 0 : _b.version))
       return;
     if (data.conf && typeof data.conf.img_upload === "boolean") {
       this.ctx.conf.imgUpload = data.conf.img_upload;
@@ -5357,7 +5571,7 @@ class ListLite extends Component {
       this.$el.append(this.pagination.$el);
     }
   }
-  onError(msg, offset) {
+  onError(msg, offset, errData) {
     var _a;
     msg = String(msg);
     console.error(msg);
@@ -5370,10 +5584,20 @@ class ListLite extends Component {
     $retryBtn.onclick = () => this.fetchComments(0);
     $err.appendChild($retryBtn);
     const adminBtn = createElement('<span atk-only-admin-show> | <span style="cursor:pointer;">\u6253\u5F00\u63A7\u5236\u53F0</span></span>');
-    adminBtn.onclick = () => this.ctx.trigger("sidebar-show");
+    $err.appendChild(adminBtn);
     if (!this.ctx.user.data.isAdmin)
       adminBtn.classList.add("atk-hide");
-    $err.appendChild(adminBtn);
+    let sidebarView = "";
+    if (errData == null ? void 0 : errData.err_no_site) {
+      const viewLoadParam = {
+        create_name: this.ctx.conf.site,
+        create_urls: `${window.location.protocol}//${window.location.host}`
+      };
+      sidebarView = `sites|${JSON.stringify(viewLoadParam)}`;
+    }
+    adminBtn.onclick = () => this.ctx.trigger("sidebar-show", {
+      view: sidebarView
+    });
     setError(this.$el, $err);
   }
   refreshUI() {
@@ -5553,20 +5777,19 @@ class ListLite extends Component {
       });
     }
   }
-  versionCheck(versionData) {
-    const needVersion = (versionData == null ? void 0 : versionData.fe_min_version) || "0.0.0";
-    const needUpdate = versionCompare(needVersion, "2.1.9") === 1;
+  versionCheck(name, needVersion, curtVersion) {
+    const needUpdate = versionCompare(needVersion, curtVersion) === 1;
     if (needUpdate) {
-      const errEl = createElement(`<div>\u524D\u7AEF Artalk \u7248\u672C\u5DF2\u8FC7\u65F6\uFF0C\u8BF7\u66F4\u65B0\u4EE5\u83B7\u5F97\u5B8C\u6574\u4F53\u9A8C<br/>\u82E5\u60A8\u662F\u7AD9\u70B9\u7BA1\u7406\u5458\uFF0C\u8BF7\u524D\u5F80 \u201C<a href="https://artalk.js.org/" target="_blank">\u5B98\u65B9\u6587\u6863</a>\u201D \u83B7\u53D6\u5E2E\u52A9<br/><br/><span style="color: var(--at-color-meta);">\u524D\u7AEF\u7248\u672C ${"2.1.9"}\uFF0C\u9700\u6C42\u7248\u672C >= ${needVersion}</span><br/><br/></div>`);
+      const errEl = createElement(`<div>Artalk ${name}\u7248\u672C\u5DF2\u8FC7\u65F6\uFF0C\u8BF7\u66F4\u65B0\u4EE5\u83B7\u5F97\u5B8C\u6574\u4F53\u9A8C<br/>\u5982\u679C\u4F60\u662F\u7BA1\u7406\u5458\uFF0C\u8BF7\u524D\u5F80 \u201C<a href="https://artalk.js.org/" target="_blank">\u5B98\u65B9\u6587\u6863</a>\u201D \u83B7\u5F97\u5E2E\u52A9<br/><br/><span style="color: var(--at-color-meta);">\u5F53\u524D${name}\u7248\u672C ${curtVersion}\uFF0C\u9700\u6C42\u7248\u672C >= ${needVersion}</span><br/><br/></div>`);
       const ignoreBtn = createElement('<span style="cursor:pointer;">\u5FFD\u7565</span>');
       ignoreBtn.onclick = () => {
-        setError(this.ctx, null);
+        setError(this.$el.parentElement, null);
         this.ctx.conf.versionCheck = false;
         this.ctx.trigger("conf-updated");
         this.fetchComments(0);
       };
       errEl.append(ignoreBtn);
-      setError(this.ctx, errEl, '<span class="atk-warn-title">Artalk Warn</span>');
+      setError(this.$el.parentElement, errEl, '<span class="atk-warn-title">Artalk Warn</span>');
     }
     return needUpdate;
   }
@@ -5599,7 +5822,7 @@ class List extends ListLite {
     if (this.ctx.conf.listSort) {
       this.initDropdown();
     }
-    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.1.9"}">Artalk</a>`;
+    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.2.8"}">Artalk</a>`;
     this.ctx.on("list-reload", () => this.fetchComments(0));
     this.ctx.on("list-refresh-ui", () => this.refreshUI());
     this.ctx.on("list-import", (data) => this.importComments(data));
@@ -5783,13 +6006,13 @@ class SidebarLayer extends Component {
     this.$closeBtn.onclick = () => {
       this.hide();
     };
-    this.ctx.on("sidebar-show", () => this.show());
+    this.ctx.on("sidebar-show", (conf) => this.show(conf || {}));
     this.ctx.on("sidebar-hide", () => this.hide());
     this.ctx.on("user-changed", () => {
       this.firstShow = true;
     });
   }
-  show() {
+  show(conf) {
     return __async(this, null, function* () {
       this.$el.style.transform = "";
       if (this.layer == null) {
@@ -5804,22 +6027,48 @@ class SidebarLayer extends Component {
       setTimeout(() => {
         this.$el.style.transform = "translate(0, 0)";
       }, 20);
+      (() => __async(this, null, function* () {
+        var _a;
+        const resp = yield new Api(this.ctx).loginStatus();
+        if (resp.is_admin && !resp.is_login) {
+          (_a = this.layer) == null ? void 0 : _a.hide();
+          this.firstShow = true;
+          this.ctx.trigger("checker-admin", {
+            onSuccess: () => {
+              setTimeout(() => {
+                this.show(conf);
+              }, 500);
+            },
+            onCancel: () => {
+            }
+          });
+        }
+      }))();
+      this.ctx.trigger("unread-update", { notifies: [] });
       if (this.firstShow) {
         this.$iframeWrap.innerHTML = "";
         this.$iframe = createElement("<iframe></iframe>");
-        const baseURL = getURLBasedOnApi(this.ctx, "sidebar/");
-        const userData = encodeURIComponent(JSON.stringify(this.ctx.user.data));
-        const location = window.location;
-        this.iframeLoad(`${baseURL}?pageKey=${encodeURIComponent(this.conf.pageKey)}&site=${encodeURIComponent(this.conf.site || "")}&user=${userData}&referer=${encodeURIComponent(`${location.protocol}//${location.host}${location.pathname}`)}${this.conf.darkMode ? `&darkMode=1` : ``}`);
+        const baseURL = getURLBasedOnApi(this.ctx, "/sidebar/");
+        const query = {
+          pageKey: this.conf.pageKey,
+          site: this.conf.site || "",
+          user: JSON.stringify(this.ctx.user.data),
+          time: +new Date()
+        };
+        if (conf.view)
+          query.view = conf.view;
+        if (this.conf.darkMode)
+          query.darkMode = "1";
+        const urlParams = new URLSearchParams(query);
+        this.iframeLoad(`${baseURL}?${urlParams.toString()}`);
         this.$iframeWrap.append(this.$iframe);
         this.firstShow = false;
       } else {
-        if (this.conf.darkMode && !this.$iframe.src.match(/darkMode=1$/)) {
+        const isIframeSrcDarkMode = this.$iframe.src.includes("darkMode=1");
+        if (this.conf.darkMode && !isIframeSrcDarkMode)
           this.iframeLoad(`${this.$iframe.src}&darkMode=1`);
-        }
-        if (!this.conf.darkMode && this.$iframe.src.match(/darkMode=1$/)) {
-          this.iframeLoad(this.$iframe.src.replace(/&darkMode=1$/, ""));
-        }
+        if (!this.conf.darkMode && isIframeSrcDarkMode)
+          this.iframeLoad(this.$iframe.src.replace("&darkMode=1", ""));
       }
     });
   }
@@ -5871,23 +6120,41 @@ const _Artalk = class {
     __publicField(this, "editor");
     __publicField(this, "list");
     __publicField(this, "sidebarLayer");
-    this.conf = __spreadValues(__spreadValues({}, _Artalk.defaults), customConf);
-    this.conf.server = this.conf.server.replace(/\/$/, "");
+    this.conf = mergeDeep(_Artalk.defaults, customConf);
+    this.conf.server = this.conf.server.replace(/\/$/, "").replace(/\/api\/?$/, "");
     if (!this.conf.pageKey) {
-      this.conf.pageKey = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+      this.conf.pageKey = `${window.location.pathname}`;
     }
-    try {
-      const $root = document.querySelector(this.conf.el);
-      if (!$root)
-        throw Error(`Sorry, target element "${this.conf.el}" was not found.`);
-      this.$root = $root;
-    } catch (e) {
-      console.error(e);
-      throw new Error("Please check your Artalk `el` config.");
+    if (!this.conf.pageTitle) {
+      this.conf.pageTitle = `${document.title}`;
+    }
+    if (!!this.conf.el && this.conf.el instanceof HTMLElement) {
+      this.$root = this.conf.el;
+    } else {
+      try {
+        const $root = document.querySelector(this.conf.el);
+        if (!$root)
+          throw Error(`Sorry, target element "${this.conf.el}" was not found.`);
+        this.$root = $root;
+      } catch (e) {
+        console.error(e);
+        throw new Error("Please check your Artalk `el` config.");
+      }
     }
     this.ctx = new Context(this.$root, this.conf);
     this.$root.classList.add("artalk");
     this.$root.innerHTML = "";
+    if (this.conf.useBackendConf) {
+      return (() => __async(this, null, function* () {
+        yield this.loadConfRemote();
+        this.initCore();
+        return this;
+      }))();
+    }
+    this.initCore();
+  }
+  initCore() {
+    this.initLayer();
     this.initDarkMode();
     this.checkerLauncher = new CheckerLauncher(this.ctx);
     initMarked(this.ctx);
@@ -5904,6 +6171,19 @@ const _Artalk = class {
       if (typeof plugin === "function") {
         plugin(this.ctx);
       }
+    });
+  }
+  loadConfRemote() {
+    return __async(this, null, function* () {
+      showLoading(this.$root);
+      let backendConf = {};
+      try {
+        backendConf = yield new Api(this.ctx).conf();
+      } catch (err) {
+        console.error("\u914D\u7F6E\u8FDC\u7A0B\u83B7\u53D6\u5931\u8D25", err);
+      }
+      this.ctx.conf = mergeDeep(this.ctx.conf, backendConf);
+      hideLoading(this.$root);
     });
   }
   initEventBind() {
@@ -5934,6 +6214,10 @@ const _Artalk = class {
   reload() {
     this.list.fetchComments(0);
   }
+  initLayer() {
+    Layer.BodyOrgOverflow = document.body.style.overflow;
+    Layer.BodyOrgPaddingRight = document.body.style.paddingRight;
+  }
   initDarkMode() {
     const darkModeClassName = "atk-dark-mode";
     if (this.conf.darkMode) {
@@ -5957,12 +6241,12 @@ const _Artalk = class {
   }
   initPV() {
     return __async(this, null, function* () {
-      if (!this.conf.pvEl || !document.querySelector(this.conf.pvEl))
-        return;
-      const $pv = document.querySelector(this.conf.pvEl);
       const pvNum = yield new Api(this.ctx).pv();
       if (Number.isNaN(Number(pvNum)))
         return;
+      if (!this.conf.pvEl || !document.querySelector(this.conf.pvEl))
+        return;
+      const $pv = document.querySelector(this.conf.pvEl);
       $pv.innerText = String(pvNum);
     });
   }
