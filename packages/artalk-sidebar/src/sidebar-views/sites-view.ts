@@ -1,6 +1,5 @@
 import Api from 'artalk/src/api'
 import Context from 'artalk/src/context'
-import Component from 'artalk/src/lib/component'
 import * as Utils from 'artalk/src/lib/utils'
 import Comment from 'artalk/src/components/comment'
 
@@ -17,16 +16,16 @@ export default class SitesView extends SidebarView {
 
   siteList!: SiteList
 
-  mount(siteName: string) {
+  mount() {
     if (!this.siteList) {
-      this.siteList = new SiteList(this.ctx)
+      this.siteList = new SiteList(this.ctx, this.sidebar)
       this.$el.append(this.siteList.$el)
     }
 
     this.reqSites()
   }
 
-  switchTab(tab: string, siteName: string) {
+  switchTab(tab: string) {
     this.reqSites()
   }
 

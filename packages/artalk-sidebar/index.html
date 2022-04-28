@@ -9,6 +9,23 @@
 <body>
   <div id="ArtalkSidebar"></div>
 
-  <script type="module" src="./src/index.ts"></script>
+  <script type="module">
+    import InitSidebar from './src/main'
+
+    const p        = new URLSearchParams(document.location.search)
+    const pageKey  = p.get('pageKey') || ''
+    const site     = p.get('site') || ''
+    const user     = JSON.parse(p.get('user') || '{}')
+    const view     = p.get('view') || ''
+    const darkMode = p.get('darkMode') === '1'
+
+    InitSidebar({
+      el: '#ArtalkSidebar',
+      server: (import.meta.env.MODE === 'development') ? 'http://localhost:23366' : '../',
+      pageKey,
+      site,
+      darkMode,
+    }, user, view)
+  </script>
 </body>
 </html>

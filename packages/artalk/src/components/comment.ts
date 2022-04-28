@@ -1,11 +1,11 @@
 import '../style/comment.less'
 
+import { CommentData } from '~/types/artalk-data'
 import Context from '../context'
 import Component from '../lib/component'
 import * as Utils from '../lib/utils'
 import * as Ui from '../lib/ui'
 import UADetect from '../lib/detect'
-import { CommentData } from '~/types/artalk-data'
 import CommentHTML from './html/comment.html?raw'
 import Api from '../api'
 import ActionBtn from './action-btn'
@@ -317,7 +317,7 @@ export default class Comment extends Component {
   }
 
   getIsRoot() {
-    return this.parent === null
+    return this.data.rid === 0
   }
 
   getChildren() {

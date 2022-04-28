@@ -1,5 +1,6 @@
 import '../style/editor.less'
 
+import { CommentData } from '~/types/artalk-data'
 import Context from '../context'
 import Component from '../lib/component'
 import * as Utils from '../lib/utils'
@@ -8,7 +9,6 @@ import EditorHTML from './html/editor.html?raw'
 
 import EmoticonsPlug from './editor-plugs/emoticons-plug'
 import PreviewPlug from './editor-plugs/preview-plug'
-import { CommentData } from '~/types/artalk-data'
 import Api from '../api'
 
 export default class Editor extends Component {
@@ -22,6 +22,7 @@ export default class Editor extends Component {
   public $bottom: HTMLElement
   public $plugBtnWrap: HTMLElement
   public $imgUploadBtn?: HTMLElement
+  public $imgUploadInput?: HTMLInputElement
   public $submitBtn: HTMLButtonElement
   public $notifyWrap: HTMLElement
 
@@ -84,9 +85,22 @@ export default class Editor extends Component {
       if (inputEl && inputEl instanceof HTMLInputElement) {
         inputEl.value = this.user.data[field] || ''
         // 绑定事件
-        inputEl.addEventListener('input', () => this.onHeaderInputChanged(field, inputEl))
+        inputEl.addEventListener('input', () => this.onHeaderInput(field, inputEl))
       }
     })
+
+    // Link URL 自动补全协议
+    const $linkInput = this.getInputEl('link')
+    if ($linkInput) {
+      $linkInput.addEventListener('change', () => {
+        const link = $linkInput.value.trim()
+        if (!!link && !/^(http|https):\/\//.test(link)) {
+          $linkInput.value = `https://${link}`
+          this.user.data.link = $linkInput.value
+          this.saveUser()
+        }
+      })
+    }
   }
 
   getInputEl (field: string) {
@@ -100,7 +114,7 @@ export default class Editor extends Component {
   }
 
   /** header 输入框内容变化事件 */
-  onHeaderInputChanged (field: string, inputEl: HTMLInputElement) {
+  onHeaderInput(field: string, inputEl: HTMLInputElement) {
     this.user.data[field] = inputEl.value.trim()
 
     // 若修改的是 nick or email
@@ -204,6 +218,17 @@ export default class Editor extends Component {
       // 切换按钮
       const btnElem = Utils.createElement(`<span class="atk-plug-btn" data-plug-name="${PlugObj.Name}">${PlugObj.BtnHTML}</span>`)
       this.$plugBtnWrap.appendChild(btnElem)
+
+      // 表情包插件预加载
+      if (PlugObj.Name === 'emoticons') {
+        const emoPlug = new PlugObj(this) as EmoticonsPlug
+        this.plugList[PlugObj.Name] = emoPlug
+
+        window.setTimeout(() => {
+          emoPlug.loadEmoticonsData()
+        }, 1000) // 延迟 1s 加载
+      }
+
       btnElem.addEventListener('click', () => {
         let plug = this.plugList[PlugObj.Name]
         if (!plug) {
@@ -265,12 +290,16 @@ export default class Editor extends Component {
     this.$imgUploadBtn = Utils.createElement(`<span class="atk-plug-btn">图片</span>`)
     this.$plugBtnWrap.querySelector('[data-plug-name="preview"]')!.before(this.$imgUploadBtn) // 显示在预览图标之前
 
+    this.$imgUploadInput = document.createElement('input')
+    this.$imgUploadInput.type = 'file'
+    this.$imgUploadInput.style.display = 'none'
+    this.$imgUploadInput.accept = this.allowImgExts.map(o => `.${o}`).join(',')
+    this.$imgUploadBtn.after(this.$imgUploadInput)
+
     // 按钮点击
     this.$imgUploadBtn.onclick = () => {
       // 选择图片
-      const $input = document.createElement('input')
-      $input.type = 'file'
-      $input.accept = this.allowImgExts.map(o => `.${o}`).join(',')
+      const $input = this.$imgUploadInput!
       $input.onchange = () => {
         (async () => { // 解决阻塞 UI 问题
           if (!$input.files || $input.files.length === 0) return
@@ -393,7 +422,11 @@ export default class Editor extends Component {
     if (!!this.plugList && !!this.plugList.preview) {
       this.plugList.preview.updateContent()
     }
-    this.adjustTextareaHeight()
+
+    // 延迟执行防止无效
+    window.setTimeout(() => {
+      this.adjustTextareaHeight()
+    }, 80)
   }
 
   clearEditor () {
@@ -501,7 +534,7 @@ export default class Editor extends Component {
 
       // 回复不同页面的评论
       if (this.replyComment !== null && this.replyComment.page_key !== this.ctx.conf.pageKey) {
-        window.open(`${this.replyComment.page_key}#atk-comment-${nComment.id}`)
+        window.open(`${this.replyComment.page_url}#atk-comment-${nComment.id}`)
       }
 
       this.ctx.trigger('list-insert', nComment)
@@ -551,6 +584,8 @@ export default class Editor extends Component {
     const $travelPlace = Utils.createElement('<div></div>')
     $afterEl.after($travelPlace)
     $travelPlace.replaceWith(this.$el)
+
+    this.$el.classList.add('atk-fade-in') // 添加渐入动画
   }
 
   travelBack () {
@@ -560,6 +595,10 @@ export default class Editor extends Component {
 
     // 取消回复
     if (this.replyComment !== null) this.cancelReply()
+  }
+
+  initRemoteEmoticons () {
+
   }
 }
 

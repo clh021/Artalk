@@ -3,9 +3,11 @@ import '../style/sidebar-layer.less'
 import Context from '@/context'
 import Component from '@/lib/component'
 import * as Utils from '@/lib/utils'
-import SidebarHTML from './html/sidebar-layer.html?raw'
 import * as Ui from '@/lib/ui'
+import { SidebarShowPayload } from '~/types/event'
+import SidebarHTML from './html/sidebar-layer.html?raw'
 import Layer from './layer'
+import Api from '../api'
 
 export default class SidebarLayer extends Component {
   public layer?: Layer
@@ -27,7 +29,7 @@ export default class SidebarLayer extends Component {
     }
 
     // event
-    this.ctx.on('sidebar-show', () => (this.show()))
+    this.ctx.on('sidebar-show', (conf) => (this.show(conf || {})))
     this.ctx.on('sidebar-hide', () => (this.hide()))
     this.ctx.on('user-changed', () => { this.firstShow = true })
   }
@@ -35,7 +37,7 @@ export default class SidebarLayer extends Component {
   private firstShow = true
 
   /** 显示 */
-  public async show() {
+  public async show(conf: SidebarShowPayload) {
     this.$el.style.transform = '' // 动画清除，防止二次打开失效
 
     // 获取 Layer
@@ -58,33 +60,60 @@ export default class SidebarLayer extends Component {
       this.$el.style.transform = 'translate(0, 0)'
     }, 20)
 
+    // 管理员身份验证 (若身份失效，弹出验证窗口)
+    ;(async () => {
+      const resp = await new Api(this.ctx).loginStatus()
+      if (resp.is_admin && !resp.is_login) {
+        this.layer?.hide()
+        this.firstShow = true
+
+        this.ctx.trigger('checker-admin', {
+          onSuccess: () => {
+            setTimeout(() => {
+              this.show(conf)
+            }, 500)
+          },
+          onCancel: () => {}
+        })
+      }
+    })()
+
+    // 清空 unread
+    this.ctx.trigger('unread-update', { notifies: [] })
+
     // 第一次加载
     if (this.firstShow) {
       this.$iframeWrap.innerHTML = ''
       this.$iframe = Utils.createElement<HTMLIFrameElement>('<iframe></iframe>')
 
+      // 准备 Iframe 参数
       const baseURL = (import.meta.env.MODE === 'development')  ? 'http://localhost:23367/'
-        : Utils.getURLBasedOnApi(this.ctx, 'sidebar/')
-      const userData = encodeURIComponent(JSON.stringify(this.ctx.user.data))
+        : Utils.getURLBasedOnApi(this.ctx, '/sidebar/')
 
-      const location = window.location
-      this.iframeLoad(`${baseURL}`
-        + `?pageKey=${encodeURIComponent(this.conf.pageKey)}`
-        + `&site=${encodeURIComponent(this.conf.site || '')}`
-        + `&user=${userData}`
-        + `&referer=${encodeURIComponent(`${location.protocol}//${location.host}${location.pathname}`)}`
-        + `${((this.conf.darkMode) ? `&darkMode=1` : ``)}`)
+      const query: any = {
+        pageKey: this.conf.pageKey,
+        site: this.conf.site || '',
+        user: JSON.stringify(this.ctx.user.data),
+        time: +new Date()
+      }
+
+      if (conf.view) query.view = conf.view
+      if (this.conf.darkMode) query.darkMode = '1'
+
+      const urlParams = new URLSearchParams(query);
+      this.iframeLoad(`${baseURL}?${urlParams.toString()}`)
 
       this.$iframeWrap.append(this.$iframe)
       this.firstShow = false
     } else {
       // 暗黑模式
-      if (this.conf.darkMode && !this.$iframe!.src.match(/darkMode=1$/)) {
+      const isIframeSrcDarkMode = this.$iframe!.src.includes('darkMode=1')
+
+      if (this.conf.darkMode && !isIframeSrcDarkMode)
         this.iframeLoad(`${this.$iframe!.src}&darkMode=1`)
-      }
-      if (!this.conf.darkMode && this.$iframe!.src.match(/darkMode=1$/)) {
-        this.iframeLoad(this.$iframe!.src.replace(/&darkMode=1$/, ''))
-      }
+
+      if (!this.conf.darkMode && isIframeSrcDarkMode)
+        this.iframeLoad(this.$iframe!.src.replace('&darkMode=1', ''))
     }
   }
 

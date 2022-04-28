@@ -1,13 +1,14 @@
 import '../style/page-list.less'
 
 import Context from 'artalk/src/context'
-import Component from 'artalk/src/lib/component'
 import * as Utils from 'artalk/src/lib/utils'
 import * as Ui from 'artalk/src/lib/ui'
 import { PageData } from 'artalk/types/artalk-data'
 import Api from 'artalk/src/api'
 import ActionBtn from 'artalk/src/components/action-btn'
-import ItemTextEditor from '../item-text-editor'
+import Component from '../sidebar-component'
+import { SidebarCtx } from '../main'
+import ItemTextEditor from '../lib/item-text-editor'
 
 export default class PageList extends Component {
   $editor?: HTMLElement
@@ -15,16 +16,85 @@ export default class PageList extends Component {
 
   pages: PageData[] = []
 
-  constructor(ctx: Context) {
-    super(ctx)
+  constructor(ctx: Context, sidebar: SidebarCtx) {
+    super(ctx, sidebar)
 
     this.$el = Utils.createElement(`<div class="atk-page-list"></div>`)
   }
 
-  /** 清空所有 Pages */
-  clearAll() {
+  /** 初始化 PageList (清空列表) */
+  initPageList() {
     this.pages = []
-    this.$el.innerHTML = ''
+
+    this.$el.innerHTML = `<div class="atk-header-action-bar">
+    <span class="atk-update-all-title-btn"><i class="atk-icon atk-icon-sync"></i> <span class="atk-text">更新标题</span></span>
+    <span class="atk-cache-flush-all-btn"><span class="atk-text">缓存清除</span></span>
+    <span class="atk-cache-warm-up-btn"><span class="atk-text">缓存预热</span></span>
+    </div>`
+
+    // 缓存操作按钮
+    const $cacheFlushBtn = this.$el.querySelector<HTMLElement>('.atk-cache-flush-all-btn')!
+    $cacheFlushBtn.onclick = () => { new Api(this.ctx).cacheFlushAll().then((d: any) => alert(d.msg)).catch(() => alert('操作失败')) }
+    const $cacheWarmBtn = this.$el.querySelector<HTMLElement>('.atk-cache-warm-up-btn')!
+    $cacheWarmBtn.onclick = () => { new Api(this.ctx).cacheWarmUp().then((d: any) => alert(d.msg)).catch(() => alert('操作失败')) }
+
+    // 更新全部页面标题按钮
+    ;(async () => {
+      const $updateAllTitleBtn = this.$el.querySelector<HTMLElement>('.atk-update-all-title-btn')!
+      const $updateAllTitleIcon = $updateAllTitleBtn.querySelector<HTMLElement>('i')!
+      const $updateAllTitleText = $updateAllTitleBtn.querySelector<HTMLElement>('.atk-text')!
+      const btnTextOrg = $updateAllTitleText.innerText
+
+      const done = () => {
+        $updateAllTitleText.innerText = '更新完毕'
+        $updateAllTitleIcon.classList.remove('atk-rotate')
+        window.setTimeout(() => {
+          $updateAllTitleText.innerText = btnTextOrg
+        }, 1500)
+      }
+      const checkStatus = async () => {
+        const status = await new Api(this.ctx).pageFetch(undefined, undefined, true)
+        return status
+      }
+      const startWatchdog = () => {
+        $updateAllTitleIcon.classList.add('atk-rotate')
+
+        // 不完美的轮询更新状态
+        const timerID = window.setInterval(async () => {
+          const d = await new Api(this.ctx).pageFetch(undefined, undefined, true)
+
+          if (d.is_progress === false) {
+            clearInterval(timerID)
+            done()
+            return
+          }
+
+          $updateAllTitleText.innerText = d.msg
+        }, 1000)
+      }
+
+      // 图标恢复
+      const status = await checkStatus()
+      if (status.is_progress === true) {
+        startWatchdog()
+        $updateAllTitleText.innerText = status.msg
+      }
+
+      // 点击发起任务
+      $updateAllTitleBtn.onclick = async () => {
+        if ($updateAllTitleIcon.classList.contains('atk-rotate')) return
+        startWatchdog()
+        $updateAllTitleText.innerText = '开始更新...'
+
+        // 发起任务
+        try {
+          await new Api(this.ctx).pageFetch(undefined, this.sidebar.curtSite)
+        } catch (err: any) {
+          alert(err.msg)
+          done()
+        }
+      }
+    })()
   }
 
   /** 导入 Page 数据 */
@@ -60,6 +130,9 @@ export default class PageList extends Component {
     $title.innerText = page.title
     $sub.innerText = page.url || page.key
     $editBtn.onclick = () => this.showEditor(page, $page)
+
+    $title.onclick = () => { if (page.url) window.open(page.url) }
+    $sub.onclick = () => { if (page.url) window.open(page.url) }
 
     return $page
   }
@@ -157,7 +230,7 @@ export default class PageList extends Component {
       showLoading()
       let p: PageData
       try {
-        p = await new Api(this.ctx).pageFetch(page.id)
+        p = (await new Api(this.ctx).pageFetch(page.id)).page
       } catch (err: any) {
         showError(`同步失败：${err.msg || '未知错误'}`)
         console.log(err)

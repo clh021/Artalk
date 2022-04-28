@@ -1,7 +1,8 @@
 import './style/main.less'
 
-import Context from './context'
 import ArtalkConfig from '~/types/artalk-config'
+import { EventPayloadMap, Handler } from '~/types/event'
+import Context from './context'
 import defaults from './defaults'
 
 import CheckerLauncher from './lib/checker'
@@ -9,10 +10,10 @@ import Editor from './components/editor'
 import List from './components/list'
 import SidebarLayer from './components/sidebar-layer'
 
-import { GetLayerWrap } from './components/layer'
-import { EventPayloadMap, Handler } from '~/types/event'
+import Layer, { GetLayerWrap } from './components/layer'
 import Api from './api'
 import * as Utils from './lib/utils'
+import * as Ui from './lib/ui'
 
 /**
  * Artalk
@@ -21,33 +22,43 @@ import * as Utils from './lib/utils'
 export default class Artalk {
   public static readonly defaults: ArtalkConfig = defaults
 
-  public ctx: Context
-  public conf: ArtalkConfig
-  public $root: HTMLElement
+  public ctx!: Context
+  public conf!: ArtalkConfig
+  public $root!: HTMLElement
 
-  public checkerLauncher: CheckerLauncher
-  public editor: Editor
-  public list: List
-  public sidebarLayer: SidebarLayer
+  public checkerLauncher!: CheckerLauncher
+  public editor!: Editor
+  public list!: List
+  public sidebarLayer!: SidebarLayer
 
   constructor (customConf: ArtalkConfig) {
     // 配置
-    this.conf = { ...Artalk.defaults, ...customConf }
-    this.conf.server = this.conf.server.replace(/\/$/, '')
+    this.conf = Utils.mergeDeep(Artalk.defaults, customConf)
+    this.conf.server = this.conf.server.replace(/\/$/, '').replace(/\/api\/?$/, '')
 
     // 默认 pageKey
     if (!this.conf.pageKey) {
-      this.conf.pageKey = `${window.location.protocol}//${window.location.host}${window.location.pathname}`
+      // @link http://bl.ocks.org/abernier/3070589
+      this.conf.pageKey = `${window.location.pathname}`
+    }
+
+    // 默认 pageTitle
+    if (!this.conf.pageTitle) {
+      this.conf.pageTitle = `${document.title}`
     }
 
     // 装载元素
-    try {
-      const $root = document.querySelector<HTMLElement>(this.conf.el)
-      if (!$root) throw Error(`Sorry, target element "${this.conf.el}" was not found.`)
-      this.$root = $root
-    } catch (e) {
-      console.error(e)
-      throw new Error('Please check your Artalk `el` config.')
+    if (!!this.conf.el && this.conf.el instanceof HTMLElement) {
+      this.$root = this.conf.el
+    } else {
+      try {
+        const $root = document.querySelector<HTMLElement>(this.conf.el)
+        if (!$root) throw Error(`Sorry, target element "${this.conf.el}" was not found.`)
+        this.$root = $root
+      } catch (e) {
+        console.error(e)
+        throw new Error('Please check your Artalk `el` config.')
+      }
     }
 
     // Context 初始化
@@ -56,9 +67,25 @@ export default class Artalk {
     // 界面初始化
     this.$root.classList.add('artalk')
     this.$root.innerHTML = ''
-    this.initDarkMode()
 
+    // 初始化组件
+    if (this.conf.useBackendConf) {
+      // 复用后端的配置
+      // @ts-ignore
+      return (async () => {
+        await this.loadConfRemote()
+        this.initCore()
+        return this // Promise<Artalk>
+      })()
+    }
+
+    this.initCore()
+  }
+
+  private initCore() {
     // 组件初始化
+    this.initLayer()
+    this.initDarkMode()
     this.checkerLauncher = new CheckerLauncher(this.ctx)
     Utils.initMarked(this.ctx) // 初始化 marked
 
@@ -89,6 +116,17 @@ export default class Artalk {
         plugin(this.ctx)
       }
     })
+  }
+
+  /** 获取远程配置 */
+  private async loadConfRemote() {
+    Ui.showLoading(this.$root)
+    let backendConf = {}
+    try {
+      backendConf = await (new Api(this.ctx)).conf()
+    } catch (err) { console.error("配置远程获取失败", err) }
+    this.ctx.conf = Utils.mergeDeep(this.ctx.conf, backendConf)
+    Ui.hideLoading(this.$root)
   }
 
   /** 事件绑定 · 初始化 */
@@ -133,6 +171,13 @@ export default class Artalk {
     this.list.fetchComments(0)
   }
 
+  /** Layer 初始化 */
+  initLayer() {
+    // 记录页面原始 Styles
+    Layer.BodyOrgOverflow = document.body.style.overflow
+    Layer.BodyOrgPaddingRight = document.body.style.paddingRight
+  }
+
   /** 暗黑模式 · 初始化 */
   public initDarkMode() {
     const darkModeClassName = 'atk-dark-mode'
@@ -163,14 +208,15 @@ export default class Artalk {
 
   /** PV */
   public async initPV() {
+    const pvNum = await new Api(this.ctx).pv()
+    if (Number.isNaN(Number(pvNum)))
+      return
+
     if (!this.conf.pvEl || !document.querySelector(this.conf.pvEl))
       return
 
     const $pv = document.querySelector<HTMLElement>(this.conf.pvEl)!
     // $pv.innerText = '-' // 默认占位符
-    const pvNum = await new Api(this.ctx).pv()
-    if (Number.isNaN(Number(pvNum)))
-      return
 
     $pv.innerText = String(pvNum)
   }

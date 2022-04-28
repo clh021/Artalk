@@ -10,8 +10,8 @@ export default class Layer extends Component {
 
   private maskClickHideEnable: boolean = true
 
-  private bodyStyleOrgOverflow = ''
-  private bodyStyleOrgPaddingRight = ''
+  public static BodyOrgOverflow: string
+  public static BodyOrgPaddingRight: string
 
   public afterHide?: Function
 
@@ -65,12 +65,7 @@ export default class Layer extends Component {
     }
 
     // body style 禁止滚动 + 防抖
-    this.bodyStyleOrgOverflow = document.body.style.overflow
-    this.bodyStyleOrgPaddingRight = document.body.style.paddingRight
-    document.body.style.overflow = 'hidden'
-
-    const bpr = parseInt(window.getComputedStyle(document.body, null).getPropertyValue('padding-right'), 10)
-    document.body.style.paddingRight = `${Ui.getScrollBarWidth() + bpr || 0}px`
+    this.pageBodyScrollBarHide()
   }
 
   hide () {
@@ -78,11 +73,11 @@ export default class Layer extends Component {
     this.$wrap.classList.add('atk-fade-out')
     this.$el.style.display = 'none'
 
+    // body style 禁止滚动解除
+    this.pageBodyScrollBarShow()
+
     this.newActionTimer(() => {
       this.$wrap.style.display = 'none'
-      // body style 禁止滚动解除
-      document.body.style.overflow = this.bodyStyleOrgOverflow
-      document.body.style.paddingRight = this.bodyStyleOrgPaddingRight
       this.checkCleanLayer()
     }, 450)
     this.newActionTimer(() => {
@@ -93,6 +88,20 @@ export default class Layer extends Component {
 
   setMaskClickHide (enable: boolean) {
     this.maskClickHideEnable = enable
+  }
+
+  // 页面滚动条隐藏
+  pageBodyScrollBarHide() {
+    document.body.style.overflow = 'hidden'
+
+    const bpr = parseInt(window.getComputedStyle(document.body, null).getPropertyValue('padding-right'), 10)
+    document.body.style.paddingRight = `${Ui.getScrollBarWidth() + bpr || 0}px`
+  }
+
+  // 页面滚动条显示
+  pageBodyScrollBarShow() {
+    document.body.style.overflow = Layer.BodyOrgOverflow
+    document.body.style.paddingRight = Layer.BodyOrgPaddingRight
   }
 
   // Timers
@@ -118,8 +127,8 @@ export default class Layer extends Component {
 
   /** 销毁 - 无动画 */
   disposeNow () {
-    document.body.style.overflow = ''
     this.$el.remove()
+    this.pageBodyScrollBarShow()
     // this.$el dispose
     this.checkCleanLayer()
   }

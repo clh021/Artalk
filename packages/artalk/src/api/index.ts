@@ -1,5 +1,6 @@
-import Context from '../context'
 import { CommentData, ListData, UserData, PageData, SiteData, NotifyData } from '~/types/artalk-data'
+import ArtalkConfig from '~/types/artalk-config'
+import Context from '../context'
 import { Fetch, ToFormData, POST, GET } from './request'
 import * as Utils from '../lib/utils'
 
@@ -9,7 +10,7 @@ export default class Api {
 
   constructor (ctx: Context) {
     this.ctx = ctx
-    this.baseURL = ctx.conf.server
+    this.baseURL = `${ctx.conf.server}/api`
   }
 
   // ============================
@@ -45,7 +46,7 @@ export default class Api {
       content: comment.content,
       rid: comment.rid,
       page_key: comment.page_key,
-      ua: await Utils.getCorrectUserAgent(), // 需要后端支持，获取修正后的 UA (针对 Win11)
+      ua: await Utils.getCorrectUserAgent(), // 需要后端支持，获取修正后的 UA
     }
 
     if (comment.page_title) params.page_title = comment.page_title
@@ -117,6 +118,15 @@ export default class Api {
     }
   }
 
+  /** 用户 · 登录状态 */
+  public async loginStatus() {
+    const data = await POST<any>(this.ctx, `${this.baseURL}/login-status`, {
+      name: this.ctx.user.data.nick,
+      email: this.ctx.user.data.email
+    })
+    return (data || { is_login: false, is_admin: false }) as { is_login: boolean, is_admin: boolean }
+  }
+
   // ============================
   //  页面 Page
   // ============================
@@ -158,13 +168,14 @@ export default class Api {
   }
 
   /** 页面 · 数据更新 */
-  public async pageFetch(id: number) {
-    const params: any = {
-      id,
-    }
+  public async pageFetch(id?: number, siteName?: string, getStatus?: boolean) {
+    const params: any = {}
+    if (id) params.id = id
+    if (siteName) params.site_name = siteName
+    if (getStatus) params.get_status = getStatus
 
     const d = await POST<any>(this.ctx, `${this.baseURL}/admin/page-fetch`, params)
-    return (d.page as PageData)
+    return (d as any)
   }
 
   // ============================
@@ -284,7 +295,22 @@ export default class Api {
 
     const json = await Fetch(this.ctx, `${this.baseURL}/img-upload`, init)
     return ((json.data || {}) as any) as { img_file: string, img_url: string }
+  }
 
+  /** 获取配置 */
+  public async conf() {
+    const data = await POST<any>(this.ctx, `${this.baseURL}/conf`)
+    const conf = (data.frontend_conf || {}) as ArtalkConfig
+
+    // Patch: `emoticons` config string to json
+    if (conf.emoticons && typeof conf.emoticons === "string") {
+      conf.emoticons = conf.emoticons.trim()
+      if (conf.emoticons.startsWith("[") || conf.emoticons.startsWith("{")) {
+        conf.emoticons = JSON.parse(conf.emoticons) // pase json
+      }
+    }
+
+    return conf
   }
 
   // ============================
@@ -293,13 +319,35 @@ export default class Api {
 
   /** 验证码 · 获取 */
   public async captchaGet() {
-    const data = await GET<any>(this.ctx, `${this.baseURL}/captcha/refresh`)
+    const data = await POST<any>(this.ctx, `${this.baseURL}/captcha/refresh`)
     return (data.img_data || '') as string
   }
 
   /** 验证码 · 检验 */
   public async captchaCheck(value: string) {
-    const data = await GET<any>(this.ctx, `${this.baseURL}/captcha/check`, { value })
+    const data = await POST<any>(this.ctx, `${this.baseURL}/captcha/check`, { value })
     return (data.img_data || '') as string
+  }
+
+  /** 验证码 · 状态 */
+  public async captchaStatus() {
+    const data = await POST<any>(this.ctx, `${this.baseURL}/captcha/status`)
+    return (data || { is_pass: false }) as { is_pass: boolean }
+  }
+
+  // ============================
+  //  管理员缓存操作
+  // ============================
+
+  /** 缓存清除 */
+  public cacheFlushAll() {
+    const params: any = { flush_all: true }
+    return POST(this.ctx, `${this.baseURL}/admin/cache-flush`, params)
+  }
+
+  /** 缓存预热 */
+  public cacheWarmUp() {
+    const params: any = {}
+    return POST(this.ctx, `${this.baseURL}/admin/cache-warm`, params)
   }
 }

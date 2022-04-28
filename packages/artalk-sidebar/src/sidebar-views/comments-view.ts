@@ -13,7 +13,7 @@ export default class MessageView extends SidebarView {
 
   list!: ListLite
 
-  mount(siteName: string) {
+  mount() {
     // tabs
     if (this.ctx.user.data.isAdmin) {
       this.viewTabs = {
@@ -39,9 +39,8 @@ export default class MessageView extends SidebarView {
     this.list.pageMode = 'pagination'
     this.list.noCommentText = '<div class="atk-sidebar-no-content">无内容</div>'
     this.list.renderComment = (comment) => {
-      let pageKey = comment.data.page_key
-      if (!Utils.isValidURL(pageKey)) pageKey = Utils.getURLBasedOn((window as any).referer || '', pageKey)
-      comment.setOpenURL(`${pageKey}#atk-comment-${comment.data.id}`)
+      const pageURL = comment.data.page_url
+      comment.setOpenURL(`${pageURL}#atk-comment-${comment.data.id}`)
       comment.onReplyBtnClick = () => {
         if (this.ctx.conf.editorTravel === true) {
           this.ctx.trigger('editor-reply', {data: comment.data, $el: comment.$el, scroll: false})
@@ -52,21 +51,21 @@ export default class MessageView extends SidebarView {
       }
     }
     this.list.paramsEditor = (params) => {
-      params.site_name = siteName
+      params.site_name = this.sidebar.curtSite
     }
 
     this.$el.innerHTML = ''
     this.$el.append(this.list.$el)
 
-    this.switchTab(this.viewActiveTab, siteName)
+    this.switchTab(this.viewActiveTab)
   }
 
-  switchTab(tab: string, siteName: string): boolean|void {
+  switchTab(tab: string): boolean|void {
     //console.log(tab, siteName)
     this.viewActiveTab = tab
     this.list.paramsEditor = (params) => {
       params.type = tab as any
-      params.site_name = siteName
+      params.site_name = this.sidebar.curtSite
     }
     this.list.fetchComments(0)
 

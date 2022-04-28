@@ -1,7 +1,8 @@
 import Context from 'artalk/src/context'
-import Component from 'artalk/src/lib/component'
 import * as Utils from 'artalk/src/lib/utils'
 import Comment from 'artalk/src/components/comment'
+import Component from './sidebar-component'
+import { SidebarCtx } from './main'
 
 export default class SidebarView extends Component {
   static viewName = ''
@@ -13,14 +14,14 @@ export default class SidebarView extends Component {
 
   protected $parent: HTMLElement
 
-  constructor(ctx: Context, $parent: HTMLElement) {
-    super(ctx)
+  constructor(ctx: Context, sidebar: SidebarCtx, $parent: HTMLElement) {
+    super(ctx, sidebar)
 
     this.$parent = $parent
     this.$el = Utils.createElement(`<div class="atk-sidebar-view"></div>`)
   }
 
-  mount(siteName: string) {}
+  mount() {}
 
-  switchTab(tab: string, siteName: string): boolean|void {}
+  switchTab(tab: string): boolean|void {}
 }

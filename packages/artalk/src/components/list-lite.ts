@@ -1,12 +1,13 @@
+import { ListData, CommentData, NotifyData, ApiVersionData } from '~/types/artalk-data'
 import Context from '../context'
 import Component from '../lib/component'
 import * as Utils from '../lib/utils'
 import * as Ui from '../lib/ui'
 import Api from '../api'
 import Comment from './comment'
-import { ListData, CommentData, NotifyData, ApiVersionData } from '~/types/artalk-data'
 import Pagination from './pagination'
 import ReadMoreBtn from './read-more-btn'
+import { backendMinVersion } from '../../package.json'
 
 export default class ListLite extends Component {
   protected $commentsWrap: HTMLElement
@@ -47,6 +48,9 @@ export default class ListLite extends Component {
       <div class="atk-list-comments-wrap"></div>
     </div>`)
     this.$commentsWrap = this.$el.querySelector('.atk-list-comments-wrap')!
+
+    // 评论为空时显示字符
+    if (ctx.conf.noComment) this.noCommentText = ctx.conf.noComment
 
     // 评论时间自动更新
     window.setInterval(() => {
@@ -90,7 +94,7 @@ export default class ListLite extends Component {
     try {
       listData = await new Api(this.ctx).get(offset, this.pageSize, this.flatMode, this.paramsEditor)
     } catch (e: any) {
-      this.onError(e.msg || String(e), offset)
+      this.onError(e.msg || String(e), offset, e.data)
       throw e
     } finally {
       hideLoading()
@@ -117,7 +121,9 @@ export default class ListLite extends Component {
     this.data = data
 
     // 版本检测
-    if (this.ctx.conf.versionCheck && this.versionCheck(data.api_version)) return
+    const feMinVersion = data.api_version?.fe_min_version || '0.0.0'
+    if (this.ctx.conf.versionCheck && this.versionCheck('前端', feMinVersion, ARTALK_VERSION)) return
+    if (this.ctx.conf.versionCheck && this.versionCheck('后端', backendMinVersion, data.api_version?.version)) return
 
     // 图片上传功能
     if (data.conf && typeof data.conf.img_upload === "boolean") {
@@ -216,7 +222,7 @@ export default class ListLite extends Component {
   }
 
   /** 错误处理 */
-  protected onError(msg: any, offset: number) {
+  protected onError(msg: any, offset: number, errData?: any) {
     msg = String(msg)
     console.error(msg)
 
@@ -234,9 +240,24 @@ export default class ListLite extends Component {
     $err.appendChild($retryBtn)
 
     const adminBtn = Utils.createElement('<span atk-only-admin-show> | <span style="cursor:pointer;">打开控制台</span></span>')
-    adminBtn.onclick = () => (this.ctx.trigger('sidebar-show'))
-    if (!this.ctx.user.data.isAdmin) adminBtn.classList.add('atk-hide')
     $err.appendChild(adminBtn)
+    if (!this.ctx.user.data.isAdmin) adminBtn.classList.add('atk-hide')
+
+    let sidebarView = ''
+
+    // 找不到站点错误，打开侧边栏并填入创建站点表单
+    if (errData?.err_no_site) {
+      const viewLoadParam = {
+        create_name: this.ctx.conf.site,
+        create_urls: `${window.location.protocol}//${window.location.host}`
+      }
+      // TODO 真的是飞鸽传书啊
+      sidebarView = `sites|${JSON.stringify(viewLoadParam)}`
+    }
+
+    adminBtn.onclick = () => (this.ctx.trigger('sidebar-show', {
+      view: sidebarView
+    }))
 
     Ui.setError(this.$el, $err)
   }
@@ -472,26 +493,25 @@ export default class ListLite extends Component {
     }
   }
 
-  /** 前端版本检测 */
-  public versionCheck(versionData: ApiVersionData): boolean {
-    const needVersion = versionData?.fe_min_version || '0.0.0'
-    const needUpdate = Utils.versionCompare(needVersion, ARTALK_VERSION) === 1
+  /** 版本检测 */
+  public versionCheck(name: '前端'|'后端', needVersion: string, curtVersion: string): boolean {
+    const needUpdate = Utils.versionCompare(needVersion, curtVersion) === 1
     if (needUpdate) {
       // 需要更新
-      const errEl = Utils.createElement(`<div>前端 Artalk 版本已过时，请更新以获得完整体验<br/>`
-      + `若您是站点管理员，请前往 “<a href="https://artalk.js.org/" target="_blank">官方文档</a>” 获取帮助`
+      const errEl = Utils.createElement(`<div>Artalk ${name}版本已过时，请更新以获得完整体验<br/>`
+      + `如果你是管理员，请前往 “<a href="https://artalk.js.org/" target="_blank">官方文档</a>” 获得帮助`
       + `<br/><br/>`
-      + `<span style="color: var(--at-color-meta);">前端版本 ${ARTALK_VERSION}，需求版本 >= ${needVersion}</span><br/><br/>`
+      + `<span style="color: var(--at-color-meta);">当前${name}版本 ${curtVersion}，需求版本 >= ${needVersion}</span><br/><br/>`
       + `</div>`)
       const ignoreBtn = Utils.createElement('<span style="cursor:pointer;">忽略</span>')
       ignoreBtn.onclick = () => {
-        Ui.setError(this.ctx, null)
+        Ui.setError(this.$el.parentElement!, null)
         this.ctx.conf.versionCheck = false
         this.ctx.trigger('conf-updated')
         this.fetchComments(0)
       }
       errEl.append(ignoreBtn)
-      Ui.setError(this.ctx, errEl, '<span class="atk-warn-title">Artalk Warn</span>')
+      Ui.setError(this.$el.parentElement!, errEl, '<span class="atk-warn-title">Artalk Warn</span>')
     }
 
     return needUpdate

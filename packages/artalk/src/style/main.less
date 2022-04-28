@@ -7,28 +7,48 @@
 }
 
 .artalk, .atk-layer-wrap {
+  line-height: @line-height;
+  color: var(--at-color-font);
+  font-family: @font-family;
+  word-wrap: break-word;
+  word-break: break-all;
+
   * {
     box-sizing: border-box;
-    line-height: @line-height;
+  }
+
+  input, textarea, button, optgroup, select {
+    font-family: inherit;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  @codeFont: source code pro, Consolas, Monaco, Menlo, sans-serif;
+
+  code {
+    font-family: @codeFont;
+    margin: 0 .3em;
+    padding: .1em .2em;
+    background-color: var(--at-color-bg-grey);
     color: var(--at-color-font);
-    font-family: @font-family;
-    word-wrap: break-word;
-    word-break: break-all;
+    border-radius: @block-radius;
   }
 
   pre {
-    padding: 10px;
+    margin: 10px 0 0 0;
+    padding: 0;
+    line-height: 0;
+  }
+
+  pre code {
+    * { font-family: @codeFont; }
     line-height: @line-height;
+    display: block;
+    padding: 10px 15px;
+    white-space: pre-wrap;
     background-color: var(--at-color-bg-grey);
     color: var(--at-color-font);
-    padding: 10px 15px;
-    border-radius: @block-radius;
     margin: 0;
-    font-family: Source Code Pro,courier new,Input Mono,PT Mono,SFMono-Regular,Consolas,Monaco,Menlo,PingFang SC,Liberation Mono,Microsoft YaHei,Courier,monospace;
-
-    code {
-      white-space: pre-wrap;
-    }
   }
 
   a {
@@ -54,6 +74,28 @@
 
   img {
     max-width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin-bottom: 1.5em;
+    font-size: .96em
+  }
+
+  td, th {
+    text-align: left;
+    padding: 4px 8px 4px 10px;
+    border: 1px solid var(--at-color-border)
+  }
+
+  td {
+    vertical-align: top
+  }
+
+  tr:nth-child(even) {
+    background-color: var(--at-color-bg-grey);
   }
 }
 
@@ -156,6 +198,9 @@
 .atk-fade-out {
   animation: atkFadeOut both .2s;
 }
+.atk-rotate {
+  animation: atkRotate 2s linear infinite;
+}
 
 @keyframes atkFadeIn {
   0% { opacity: 0 }
@@ -167,6 +212,11 @@
   0% {}
 }
 
+@keyframes atkRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 i.atk-icon {
   width: 20px;
   height: 20px;
@@ -175,6 +225,7 @@ i.atk-icon {
   background-repeat: no-repeat;
   mask-repeat: no-repeat;
   mask-position: center;
+  mask-size: contain;
 }
 
 .atk-icon-sync {
@@ -300,6 +351,41 @@ i.atk-icon {
           color: #FFF;
           background: #ff5652;
           border-color: #ff5652;
+        }
+      }
+    }
+
+    .atk-checker-iframe-wrap {
+      position: fixed;
+      z-index: 999998;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      width: 100vw;
+
+      & > iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
+      .atk-close-btn {
+        z-index: 999999;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        width: 50px;
+        height: 50px;
+        align-items: center;
+        place-content: center;
+        cursor: pointer;
+        user-select: none;
+        margin-left: 10px;
+
+        &:hover .atk-icon-close {
+          background-color: rgba(232, 17, 35, 0.9);
         }
       }
     }

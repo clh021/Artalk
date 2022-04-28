@@ -1,12 +1,13 @@
 import '../style/site-list.less'
 
 import Context from 'artalk/src/context'
-import Component from 'artalk/src/lib/component'
 import * as Utils from 'artalk/src/lib/utils'
 import * as Ui from 'artalk/src/lib/ui'
 import { SiteData } from 'artalk/types/artalk-data'
 import Api from 'artalk/src/api'
-import ItemTextEditor from '../item-text-editor'
+import Component from '../sidebar-component'
+import { SidebarCtx } from '../main'
+import ItemTextEditor from '../lib/item-text-editor'
 
 export default class SiteList extends Component {
   sites: SiteData[] = []
@@ -21,8 +22,8 @@ export default class SiteList extends Component {
 
   $add?: HTMLElement
 
-  constructor(ctx: Context) {
-    super(ctx)
+  constructor(ctx: Context, sidebar: SidebarCtx) {
+    super(ctx, sidebar)
 
     this.$el = Utils.createElement(
     `<div class="atk-site-list">
@@ -49,6 +50,11 @@ export default class SiteList extends Component {
       this.closeEditor()
       this.showAdd()
     }
+
+    // TODO 这个太 magic 了
+    this.ctx.on('sidebar-sites-create-form', (p: any) => {
+      this.showAdd(p.create_name, p.create_urls)
+    })
   }
 
   public loadSites(sites: SiteData[]) {
@@ -86,7 +92,7 @@ export default class SiteList extends Component {
     const $siteName = $site.querySelector<HTMLElement>('.atk-site-name')!
     const setActive = () => { $site.classList.add('atk-active') }
 
-    $siteLogo.innerText = site.name.substr(0, 1)
+    $siteLogo.innerText = site.name.substring(0, 1)
     $siteName.innerText = site.name
 
     // click
@@ -230,7 +236,7 @@ export default class SiteList extends Component {
     this.activeSite = ''
   }
 
-  public showAdd() {
+  public showAdd(defaultName?: string, defaultUrls?: string) {
     this.closeAdd()
 
     this.$add = Utils.createElement(`
@@ -255,6 +261,9 @@ export default class SiteList extends Component {
     const $siteName = this.$add.querySelector<HTMLInputElement>('[name="AtkSiteName"]')!
     const $siteUrls = this.$add.querySelector<HTMLInputElement>('[name="AtkSiteUrls"]')!
     const $submitBtn = this.$add.querySelector<HTMLButtonElement>('[name="AtkSubmit"]')!
+
+    if (defaultName) $siteName.value = defaultName
+    if (defaultUrls) $siteUrls.value = defaultUrls
 
     $submitBtn.onclick = async () => {
       const siteName = $siteName.value.trim()

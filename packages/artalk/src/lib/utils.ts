@@ -143,32 +143,41 @@ export function versionCompare(a: string, b: string) {
 /** 初始化 marked */
 export function initMarked(ctx: Context) {
   const renderer = new libMarked.Renderer()
-  const linkRenderer = renderer.link
+  const orgLinkRenderer = renderer.link
   renderer.link = (href, title, text) => {
     const localLink = href?.startsWith(`${window.location.protocol}//${window.location.hostname}`);
-    const html = linkRenderer.call(renderer as any, href, title, text);
+    const html = orgLinkRenderer.call(renderer as any, href, title, text);
     return html.replace(/^<a /, `<a target="_blank" ${!localLink ? `rel="noreferrer noopener nofollow"` : ''} `);
+  }
+
+  renderer.code = (block, lang) => {
+    // Colorize the block only if the language is known to highlight.js
+    const realLang = (!lang ? 'plaintext' : lang)
+    let colorized = block
+    if ((window as any).hljs) {
+      if (realLang && (window as any).hljs.getLanguage(realLang)) {
+        colorized = (window as any).hljs.highlight(realLang, block).value
+      }
+    } else {
+      colorized = hanabi(block)
+    }
+
+    return `<pre rel="${realLang}">\n`
+      + `<code class="hljs language-${realLang}">${colorized.replace(/&amp;/g, '&')}</code>\n`
+      + `</pre>`
   }
 
   // @see https://github.com/markedjs/marked/blob/4afb228d956a415624c4e5554bb8f25d047676fe/src/Tokenizer.js#L329
   const nMarked = libMarked
   libMarked.setOptions({
     renderer,
-    highlight: (code) => hanabi(code),
     pedantic: false,
     gfm: true,
     breaks: true,
     smartLists: true,
     smartypants: true,
     xhtml: false,
-    sanitize: true,
-    sanitizer: (html) => insane(html, {
-      ...insane.defaults,
-      allowedAttributes: {
-        ...insane.defaults.allowedAttributes,
-        img: ['src', 'atk-emoticon']
-      },
-    }),
+    sanitize: false,
     silent: true,
   })
 
@@ -177,29 +186,89 @@ export function initMarked(ctx: Context) {
 
 /** 解析 markdown */
 export function marked(ctx: Context, src: string): string {
-  return ctx.markedInstance.parse(src)
+  // @link https://github.com/markedjs/marked/discussions/1232
+  // @link https://gist.github.com/lionel-rowe/bb384465ba4e4c81a9c8dada84167225
+  let dest = insane(ctx.markedInstance.parse(src), {
+    allowedClasses: {},
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedTags: [
+      'a', 'abbr', 'article', 'b', 'blockquote', 'br', 'caption', 'code', 'del', 'details', 'div', 'em',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'main', 'mark',
+      'ol', 'p', 'pre', 'section', 'span', 'strike', 'strong', 'sub', 'summary', 'sup', 'table',
+      'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul'
+    ],
+    allowedAttributes: {
+      '*': ['title', 'accesskey'],
+      a: ['href', 'name', 'target', 'aria-label', 'rel'],
+      img: ['src', 'alt', 'title', 'atk-emoticon', 'aria-label'],
+      // for code highlight
+      code: ['class'],
+      span: ['class', 'style'],
+    },
+    filter: node => {
+      // allow hljs style
+      const allowed = [
+        [ 'code', /^hljs\W+language-(.*)$/ ],
+        [ 'span', /^(hljs-.*)$/ ]
+      ]
+      allowed.forEach(([ tag, reg ]) => {
+        if (
+          node.tag === tag
+          && !!node.attrs.class
+          && !(reg as RegExp).test(node.attrs.class)
+        ) {
+          delete node.attrs.class
+        }
+      })
+
+      // allow <span> set color sty
+      if (node.tag === 'span' && !!node.attrs.style
+          && !/^color:(\W+)?#[0-9a-f]{3,6};?$/i.test(node.attrs.style)) {
+        delete node.attrs.style
+      }
+
+      return true
+    }
+  })
+
+  // 内容替换器
+  ctx.markedReplacers.forEach((replacer) => {
+    if (typeof replacer === 'function') dest = replacer(dest)
+  })
+
+  return dest
 }
 
 /** 获取修正后的 UserAgent */
 export async function getCorrectUserAgent() {
   const uaRaw = navigator.userAgent
-  const uaData = (navigator as any).userAgentData // @link https://web.dev/migrate-to-ua-ch/
-  if (!uaData || !uaData.getHighEntropyValues) {
+  if (!(navigator as any).userAgentData || !(navigator as any).userAgentData.getHighEntropyValues) {
     return uaRaw
   }
 
-  // microsoft f******k you!!!!!
-  // @link https://docs.microsoft.com/en-us/microsoft-edge/web-platform/how-to-detect-win11
+  // @link https://web.dev/migrate-to-ua-ch/
+  // @link https://web.dev/user-agent-client-hints/
+  const uaData = (navigator as any).userAgentData
   let uaGot: any = null
   try {
     uaGot = await uaData.getHighEntropyValues(["platformVersion"])
   } catch (err) { console.error(err); return uaRaw }
-
-  if (uaData.platform !== "Windows") { return uaRaw }
   const majorPlatformVersion = Number(uaGot.platformVersion.split('.')[0])
-  if (majorPlatformVersion >= 13) {
-    // Win11 样本："Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-    return uaRaw.replace(/Windows\W+NT\W+10.0/, 'Windows NT 11.0')
+
+  if (uaData.platform === "Windows") {
+    if (majorPlatformVersion >= 13) { // @link https://docs.microsoft.com/en-us/microsoft-edge/web-platform/how-to-detect-win11
+      // @date 2022-4-29
+      // Win 11 样本："Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
+      return uaRaw.replace(/Windows NT 10.0/, 'Windows NT 11.0')
+    }
+  }
+  if (uaData.platform === "macOS") {
+    if (majorPlatformVersion >= 11) { // 11 => BigSur
+      // @date 2022-4-29
+      // (Intel Chip) macOS 12.3 样本："Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+      // (Arm Chip) macOS 样本："Mozilla/5.0 (Macintosh; ARM Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15"
+      return uaRaw.replace(/(Mac OS X \d+_\d+_\d+|Mac OS X)/, `Mac OS X ${uaGot.platformVersion.replace(/\./g, '_')}`)
+    }
   }
 
   return uaRaw
@@ -217,10 +286,40 @@ export function isValidURL(urlRaw: string) {
 
 /** 获取基于 conf.server 的 URL */
 export function getURLBasedOnApi(ctx: Context, path: string) {
-  return `${ctx.conf.server.replace(/\/api\/?$/, '')}/${path.replace(/^\//, '')}`
+  return getURLBasedOn(ctx.conf.server, path)
 }
 
 /** 获取基于某个 baseURL 的 URL */
 export function getURLBasedOn(baseURL: string, path: string) {
   return `${baseURL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+}
+
+/**
+ * Performs a deep merge of `source` into `target`.
+ * Mutates `target` only but not its objects and arrays.
+ *
+ * @author inspired by [jhildenbiddle](https://stackoverflow.com/a/48218209).
+ * @link https://gist.github.com/ahtcx/0cd94e62691f539160b32ecda18af3d6
+ */
+export function mergeDeep(target: any, source: any) {
+  const isObject = (obj: any) => obj && typeof obj === 'object'
+
+  if (!isObject(target) || !isObject(source)) {
+    return source
+  }
+
+  Object.keys(source).forEach(key => {
+    const targetValue = target[key]
+    const sourceValue = source[key]
+
+    if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+      target[key] = targetValue.concat(sourceValue)
+    } else if (isObject(targetValue) && isObject(sourceValue)) {
+      target[key] = mergeDeep({ ...targetValue}, sourceValue)
+    } else {
+      target[key] = sourceValue
+    }
+  })
+
+  return target
 }

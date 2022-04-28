@@ -1,6 +1,6 @@
 export default interface ArtalkConfig {
   /** 装载元素 */
-  el: string
+  el: string|HTMLElement
 
   /** 页面唯一标识（完整 URL） */
   pageKey: string
@@ -88,6 +88,9 @@ export default interface ArtalkConfig {
 
   /** 版本检测 */
   versionCheck?: boolean
+
+  /** 复用后端配置 */
+  useBackendConf?: boolean
 }
 
 export interface LocalUser {

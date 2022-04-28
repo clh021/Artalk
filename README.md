@@ -6,6 +6,7 @@
 
 [![](https://img.shields.io/npm/v/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
 [![](https://img.shields.io/npm/dt/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
+[![](https://badgen.net/bundlephobia/minzip/artalk?style=flat-square)](https://bundlephobia.com/package/artalk)
 [![](https://img.shields.io/github/last-commit/ArtalkJS/Artalk/master.svg?style=flat-square)](https://github.com/ArtalkJS/Artalk/commits/master)
 [![](https://img.shields.io/github/issues-raw/ArtalkJS/Artalk.svg?style=flat-square)](https://github.com/ArtalkJS/Artalk/issues)
 [![](https://img.shields.io/github/issues-pr-raw/ArtalkJS/Artalk.svg?style=flat-square)](https://github.com/ArtalkJS/Artalk/pulls)
@@ -14,11 +15,13 @@
 
 > 🌌 一款简洁的自托管评论系统 | A Selfhosted Comment System.
 
-前往：[“**官方文档**”](https://artalk.js.org)
+可参考：[“官方文档”](https://artalk.js.org)
+
+最新版：[“Releases”](https://github.com/ArtalkJS/ArtalkGo/releases)
 
 ---
 
-- 轻量级 (~30kB gzipped)
+- 轻量级 (~30kB)
 - 自托管 (数据安全)
 - 易上手 (防秃顶)
 - Golang 后端 (易部署 / 跨平台)
@@ -52,8 +55,8 @@
 - 数据备份：防止评论数据丢失
 - 数据迁移：在不同评论系统之间来回切换
 - 一页多评：一页多个评论区（似乎没啥用
-- Markdown 语法默认支持
-- 支持 Latex：需引入 Artalk 的 Katex 插件
+- Markdown：语法默认支持
+- 支持 Latex：引入 Artalk 的 Katex 插件
 - [Vite](https://github.com/vitejs/vite)：开发者的极致体验
 
 ## 食用方针
@@ -69,12 +72,152 @@ import Artalk from 'artalk'
 
 new Artalk({
   el:        '#Comments',
-  pageKey:   '<页面链接>',
-  pageTitle: '<页面标题>',
-  server:    '<后端地址>',
-  site:      '<站点名称>',
+  pageKey:   'http://your_domain/post/1', // 页面链接
+  pageTitle: '关于如何引入 Artalk 这档子事', // 页面标题
+  server:    'http://localhost:8080/api', // 后端地址
+  site:      'Artalk 的博客 (你的站点名)',
 })
 ```
+
+### Docker
+
+```sh
+# 为 Artalk 创建一个目录
+mkdir Artalk
+cd Artalk
+
+# 下载配置文件模版
+curl -L https://raw.githubusercontent.com/ArtalkJS/ArtalkGo/master/artalk-go.example.yml > conf.yml
+
+docker run -d \
+  --name artalk \
+  -p 0.0.0.0:8080:23366 \
+  -v $(pwd)/conf.yml:/conf.yml \
+  -v $(pwd)/data:/data \
+  artalk/artalk-go
+```
+
+### Docker Compose
+
+```sh
+mkdir Artalk
+cd Artalk
+
+vim docker-compose.yaml
+```
+
+```yaml
+version: "3.5"
+services:
+  artalk:
+    container_name: artalk
+    image: artalk/artalk-go
+    ports:
+      - 8080:23366
+    volumes:
+      - ./conf.yml:/conf.yml
+      - ./data:/data
+```
+
+```sh
+docker-compose up -d
+```
+
+## Supporters
+
+[![Stargazers repo roster for @ArtalkJS/Artalk](https://reporoster.com/stars/ArtalkJS/Artalk)](https://github.com/ArtalkJS/Artalk/stargazers)
+
+## TODOs 
+
+- [x] [Golang 后端](https://github.com/ArtalkJS/ArtalkGo)
+- [x] 多数据库支持
+  - [x] SQLite
+  - [x] MySQL
+  - [x] Postgres
+  - [x] SQLServer
+- [x] 多缓存支持
+  - [x] In-memory (内建缓存)
+  - [x] Redis
+  - [x] Memcache
+- [x] 多站点支持
+- [x] 评论获取分页
+- [x] 评论点赞投票
+- [x] 浏览量统计
+- [x] 评论分页加载
+- [x] 评论置顶 / 精华
+- [x] 评论排序 (热度 / 时间)
+- [x] 通知中心
+  - [x] 提及
+  - [x] 全部
+  - [x] 我的
+  - [x] 待审
+- [x] 管理员控制台
+  - [x] 评论 (增/删/改)
+  - [x] 页面 (增/删/改)
+  - [x] 站点 (增/删/改)
+  - [x] 数据分页
+  - [ ] 配置 (GUI)
+- [x] 数据导入 ([Artransfer](https://artalk.js.org/guide/transfer.html))
+  - [x] Artrans
+  - [x] WordPress
+  - [x] Typecho ([插件](https://github.com/ArtalkJS/Artrans-Typecho) / [Artransfer-CLI](https://github.com/ArtalkJS/Artransfer-CLI))
+  - [x] Valine
+  - [x] Disqus
+  - [x] Commento
+  - [x] Waline ([Artransfer-CLI](https://github.com/ArtalkJS/Artransfer-CLI))
+  - [x] Twikoo
+  - [x] Artalk v1 (PHP)
+- [x] 数据导出
+- [ ] 数据备份同步
+- [x] 邮件异步队列发送
+- [ ] 邮件队列持久化
+- [x] 邮件多种发送方式
+  - [x] SMTP
+  - [x] 阿里云邮件
+  - [x] 系统调用 sendmail
+- [x] 邮件多模板自定义
+- [x] 用户已读标记
+- [x] 验证码
+  - [x] 图片验证码
+  - [x] [极验](https://www.geetest.com/)滑动验证码
+- [x] 反垃圾
+  - [x] [Akismet](https://akismet.com/)
+  - [x] [阿里云内容安全](https://help.aliyun.com/document_detail/28417.html)
+  - [x] [腾讯云内容安全](https://cloud.tencent.com/document/product/1124/64508)
+  - [x] 关键字过滤
+- [x] 评论通知管理员 ([notify](https://github.com/nikoksr/notify))
+  - [x] Telegram Bot
+  - [x] 飞书 WebHook Bot
+  - [x] 钉钉
+  - [x] Bark
+  - [x] Slack
+  - [x] LINE
+  - [ ] 自定义 HTTP 回调
+- [ ] 命令行管理
+- [ ] 博客邮件订阅
+- [x] 用户鉴权机制
+- [x] 跨域非法请求阻止
+- [x] 全局验证码操作次数限制
+- [x] JWT 登陆状态验证
+- [x] 时区自定义
+- [x] 只看作者功能
+- [ ] AT 提及 (@)
+- [ ] 评论提及 (#)
+- [ ] 表情包统一管理
+  - [ ] 导入表情包
+  - [ ] 表情包图片地址控制
+- [x] 图片上传
+- [x] 图片上传到图床 ([upgit](https://github.com/pluveto/upgit))
+- [ ] 图片管理
+- [ ] 附件上传 / 管理
+- [ ] 评论标签分类系统
+- [ ] 主题样式更换
+- [ ] 规范化 API
+- [ ] 扩展中心
+- [ ] 开放用户注册
+- [ ] 接入第三方登录
+- [ ] 国际化 (i18n)
+- [x] 一键升级
 
 ## 特别致谢
 
