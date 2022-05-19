@@ -1,7 +1,7 @@
 import { marked as libMarked } from 'marked'
 import insane from 'insane'
 import hanabi from 'hanabi'
-import Context from '../context'
+import Context from '~/types/context'
 
 export function createElement<E extends HTMLElement = HTMLElement>(htmlStr: string = ''): E {
   const div = document.createElement('div')
@@ -58,7 +58,7 @@ export function dateFormat(date: Date) {
   return `${vYear}-${vMonth}-${vDay}`
 }
 
-export function timeAgo(date: Date) {
+export function timeAgo(date: Date, ctx: Context) {
   try {
     const oldTime = date.getTime()
     const currTime = new Date().getTime()
@@ -77,16 +77,16 @@ export function timeAgo(date: Date) {
           // 计算相差秒数
           const leave3 = leave2 % (60 * 1000) // 计算分钟数后剩余的毫秒数
           const seconds = Math.round(leave3 / 1000)
-          return `${seconds} 秒前`
+          return `${seconds} ${ctx.$t('seconds')}`
         }
-        return `${minutes} 分钟前`
+        return `${minutes} ${ctx.$t('minutes')}`
       }
-      return `${hours} 小时前`
+      return `${hours} ${ctx.$t('hours')}`
     }
-    if (days < 0) return '刚刚'
+    if (days < 0) return ctx.$t('now')
 
     if (days < 8) {
-      return `${days} 天前`
+      return `${days} ${ctx.$t('days')}`
     }
 
     return dateFormat(date)
@@ -118,7 +118,7 @@ export function onImagesLoaded($container: HTMLElement, event: Function) {
 }
 
 export function getGravatarURL(ctx: Context, emailMD5: string) {
-  return `${(ctx.conf.gravatar?.mirror || '').replace(/\/$/, '')}/${emailMD5}?d=${encodeURIComponent(ctx.conf.gravatar?.default || '')}&s=80`
+  return `${(ctx.conf.gravatar.mirror).replace(/\/$/, '')}/${emailMD5}?d=${encodeURIComponent(ctx.conf.gravatar.default)}&s=80`
 }
 
 export function sleep(ms: number) {
@@ -142,6 +142,8 @@ export function versionCompare(a: string, b: string) {
 
 /** 初始化 marked */
 export function initMarked(ctx: Context) {
+  if (!libMarked) return
+
   const renderer = new libMarked.Renderer()
   const orgLinkRenderer = renderer.link
   renderer.link = (href, title, text) => {
@@ -186,9 +188,11 @@ export function initMarked(ctx: Context) {
 
 /** 解析 markdown */
 export function marked(ctx: Context, src: string): string {
+  const rawContent = ctx.markedInstance?.parse(src) || src
+
   // @link https://github.com/markedjs/marked/discussions/1232
   // @link https://gist.github.com/lionel-rowe/bb384465ba4e4c81a9c8dada84167225
-  let dest = insane(ctx.markedInstance.parse(src), {
+  let dest = insane(rawContent, {
     allowedClasses: {},
     allowedSchemes: ['http', 'https', 'mailto'],
     allowedTags: [

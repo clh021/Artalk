@@ -16,13 +16,14 @@ const AdminChecker: Checker = {
   },
 
   body(that, ctx) {
-    return Utils.createElement('<span>敲入密码来验证管理员身份：</span>')
+    return Utils.createElement(`<span>${that.ctx.$t('adminCheck')}</span>`)
   },
 
   onSuccess(that, ctx, userToken, inputVal, formEl) {
-    that.ctx.user.data.isAdmin = true
-    that.ctx.user.data.token = userToken
-    that.ctx.user.save()
+    that.ctx.user.update({
+      isAdmin: true,
+      token: userToken
+    })
     that.ctx.trigger('user-changed', that.ctx.user.data)
     that.ctx.trigger('list-reload')
   },

@@ -1,16 +1,21 @@
-import ArtalkConfig from "~/types/artalk-config";
+import ArtalkConfig from "~/types/artalk-config"
 
 const defaults: ArtalkConfig = {
   el: '',
   pageKey: '',
+  pageTitle: '',
   server: '',
   site: '',
 
-  placeholder: '键入内容...',
-  noComment: '「此时无声胜有声」',
-  sendBtn: '发送评论',
+  placeholder: '',
+  noComment: '',
+  sendBtn: '',
   darkMode: false,
   editorTravel: true,
+
+  flatMode: 'auto',
+  nestMax: 2,
+  nestSort: 'DATE_ASC',
 
   emoticons: "https://cdn.jsdelivr.net/gh/ArtalkJS/Emoticons/grps/default.json",
 
@@ -19,8 +24,7 @@ const defaults: ArtalkConfig = {
   uaBadge: true,
   listSort: true,
   pvEl: '#ArtalkPV',
-  flatMode: 'auto',
-  maxNesting: 3,
+
   gravatar: {
     default: 'mp',
     mirror: 'https://sdn.geekzu.org/avatar/',
@@ -41,6 +45,8 @@ const defaults: ArtalkConfig = {
   reqTimeout: 15000,
   versionCheck: true,
   useBackendConf: false,
+
+  i18n: 'zh-CN',
 }
 
 export default defaults

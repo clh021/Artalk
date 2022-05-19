@@ -1,6 +1,6 @@
-import Context from 'artalk/src/context'
+import Context from 'artalk/types/context'
 import * as Utils from 'artalk/src/lib/utils'
-import ListLite from 'artalk/src/components/list-lite'
+import ListLite from 'artalk/src/list/list-lite'
 
 import SidebarView from '../sidebar-view'
 
@@ -39,20 +39,19 @@ export default class MessageView extends SidebarView {
     this.list.pageMode = 'pagination'
     this.list.noCommentText = '<div class="atk-sidebar-no-content">无内容</div>'
     this.list.renderComment = (comment) => {
-      const pageURL = comment.data.page_url
-      comment.setOpenURL(`${pageURL}#atk-comment-${comment.data.id}`)
-      comment.onReplyBtnClick = () => {
-        if (this.ctx.conf.editorTravel === true) {
-          this.ctx.trigger('editor-reply', {data: comment.data, $el: comment.$el, scroll: false})
-        } else {
-          this.ctx.trigger('sidebar-hide')
-          this.ctx.trigger('editor-reply', {data: comment.data, $el: comment.$el, scroll: true})
-        }
+      const pageURL = comment.getData().page_url
+      comment.getRender().setOpenURL(`${pageURL}#atk-comment-${comment.getID()}`)
+      comment.getConf().onReplyBtnClick = () => {
+        this.ctx.trigger('editor-reply', {data: comment.getData(), $el: comment.getEl(), scroll: true})
       }
     }
     this.list.paramsEditor = (params) => {
       params.site_name = this.sidebar.curtSite
     }
+    this.ctx.on('list-insert', (data) => {
+      this.list.insertComment(data)
+      ;(this.$el.parentNode as any)?.scrollTo(0, 0)
+    })
 
     this.$el.innerHTML = ''
     this.$el.append(this.list.$el)

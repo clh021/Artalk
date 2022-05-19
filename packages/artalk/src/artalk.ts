@@ -2,15 +2,16 @@ import './style/main.less'
 
 import ArtalkConfig from '~/types/artalk-config'
 import { EventPayloadMap, Handler } from '~/types/event'
-import Context from './context'
+import Context from '~/types/context'
+import ConcreteContext from './context'
 import defaults from './defaults'
 
 import CheckerLauncher from './lib/checker'
-import Editor from './components/editor'
-import List from './components/list'
-import SidebarLayer from './components/sidebar-layer'
+import Editor from './editor'
+import List from './list'
+import SidebarLayer from './layer/sidebar-layer'
 
-import Layer, { GetLayerWrap } from './components/layer'
+import Layer, { GetLayerWrap } from './layer'
 import Api from './api'
 import * as Utils from './lib/utils'
 import * as Ui from './lib/ui'
@@ -31,7 +32,7 @@ export default class Artalk {
   public list!: List
   public sidebarLayer!: SidebarLayer
 
-  constructor (customConf: ArtalkConfig) {
+  constructor(customConf: Partial<ArtalkConfig>) {
     // 配置
     this.conf = Utils.mergeDeep(Artalk.defaults, customConf)
     this.conf.server = this.conf.server.replace(/\/$/, '').replace(/\/api\/?$/, '')
@@ -45,6 +46,11 @@ export default class Artalk {
     // 默认 pageTitle
     if (!this.conf.pageTitle) {
       this.conf.pageTitle = `${document.title}`
+    }
+
+    // 列表显示模式
+    if (this.conf.nestMax && this.conf.nestMax <= 1) {
+      this.conf.flatMode = true
     }
 
     // 装载元素
@@ -62,7 +68,7 @@ export default class Artalk {
     }
 
     // Context 初始化
-    this.ctx = new Context(this.$root, this.conf)
+    this.ctx = new ConcreteContext(this.$root, this.conf)
 
     // 界面初始化
     this.$root.classList.add('artalk')
@@ -124,7 +130,7 @@ export default class Artalk {
     let backendConf = {}
     try {
       backendConf = await (new Api(this.ctx)).conf()
-    } catch (err) { console.error("配置远程获取失败", err) }
+    } catch (err) { console.error("Load config from remote err", err) }
     this.ctx.conf = Utils.mergeDeep(this.ctx.conf, backendConf)
     Ui.hideLoading(this.$root)
   }
@@ -133,6 +139,7 @@ export default class Artalk {
   private initEventBind() {
     // 锚点快速跳转评论
     window.addEventListener('hashchange', () => {
+      this.list.goToCommentDelay = false
       this.list.checkGoToCommentByUrlHash()
     })
 
@@ -180,7 +187,22 @@ export default class Artalk {
 
   /** 暗黑模式 · 初始化 */
   public initDarkMode() {
+    if (this.conf.darkMode === 'auto') {
+      // 自动切换暗黑模式，事件监听
+      const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)')
+      darkModeMedia.addEventListener('change', (e) => { this.setDarkMode(e.matches) })
+      this.setDarkMode(darkModeMedia.matches)
+    } else {
+      this.setDarkMode(this.conf.darkMode || false)
+    }
+  }
+
+  /** 暗黑模式 · 设定 */
+  public setDarkMode(darkMode: boolean) {
     const darkModeClassName = 'atk-dark-mode'
+
+    this.ctx.conf.darkMode = darkMode
+    this.ctx.trigger('conf-updated')
 
     if (this.conf.darkMode) {
       this.$root.classList.add(darkModeClassName)
@@ -197,13 +219,6 @@ export default class Artalk {
         $layerWrap.classList.remove(darkModeClassName)
       }
     }
-  }
-
-  /** 暗黑模式 · 设定 */
-  public setDarkMode(darkMode: boolean) {
-    this.ctx.conf.darkMode = darkMode
-    this.ctx.trigger('conf-updated')
-    this.initDarkMode()
   }
 
   /** PV */

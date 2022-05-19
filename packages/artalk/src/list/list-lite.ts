@@ -1,25 +1,31 @@
-import { ListData, CommentData, NotifyData, ApiVersionData } from '~/types/artalk-data'
-import Context from '../context'
+import { ListData, CommentData, NotifyData } from '~/types/artalk-data'
+import Context from '~/types/context'
 import Component from '../lib/component'
 import * as Utils from '../lib/utils'
 import * as Ui from '../lib/ui'
 import Api from '../api'
-import Comment from './comment'
-import Pagination from './pagination'
-import ReadMoreBtn from './read-more-btn'
+import Comment from '../comment'
+import Pagination from '../components/pagination'
+import ReadMoreBtn from '../components/read-more-btn'
+import * as ListNest from './list-nest'
 import { backendMinVersion } from '../../package.json'
 
 export default class ListLite extends Component {
   protected $commentsWrap: HTMLElement
-  protected comments: Comment[] = []
+
+  protected commentList: Comment[] = [] // Note: 无层级结构 + 无须排列
+  protected get commentDataList() { return this.commentList.map(c => c.getData()) }
 
   protected data?: ListData
   protected isLoading: boolean = false
 
-  public noCommentText = '无内容' // 无评论时显示
+  public noCommentText: string // 无评论时显示
 
   /** 平铺模式 */
   public flatMode = false
+
+  /** 嵌套模式 */
+  public nestSortBy!: ListNest.SortByType
 
   /** 分页 */
   public pageMode: 'pagination'|'read-more' = 'pagination'
@@ -50,13 +56,16 @@ export default class ListLite extends Component {
     this.$commentsWrap = this.$el.querySelector('.atk-list-comments-wrap')!
 
     // 评论为空时显示字符
-    if (ctx.conf.noComment) this.noCommentText = ctx.conf.noComment
+    this.noCommentText = ctx.conf.noComment || ctx.$t('noComment')
+
+    // 嵌套排序方式
+    this.nestSortBy = this.ctx.conf.nestSort || 'DATE_ASC'
 
     // 评论时间自动更新
     window.setInterval(() => {
       this.$el.querySelectorAll<HTMLElement>('[data-atk-comment-date]').forEach(el => {
         const date = el.getAttribute('data-atk-comment-date')
-        el.innerText = Utils.timeAgo(new Date(Number(date)))
+        el.innerText = Utils.timeAgo(new Date(Number(date)), this.ctx)
       })
     }, 30 * 1000) // 30s 更新一次
 
@@ -122,8 +131,8 @@ export default class ListLite extends Component {
 
     // 版本检测
     const feMinVersion = data.api_version?.fe_min_version || '0.0.0'
-    if (this.ctx.conf.versionCheck && this.versionCheck('前端', feMinVersion, ARTALK_VERSION)) return
-    if (this.ctx.conf.versionCheck && this.versionCheck('后端', backendMinVersion, data.api_version?.version)) return
+    if (this.ctx.conf.versionCheck && this.versionCheck('frontend', feMinVersion, ARTALK_VERSION)) return
+    if (this.ctx.conf.versionCheck && this.versionCheck('backend', backendMinVersion, data.api_version?.version)) return
 
     // 图片上传功能
     if (data.conf && typeof data.conf.img_upload === "boolean") {
@@ -170,11 +179,12 @@ export default class ListLite extends Component {
         onClick: async (o) => {
           await this.fetchComments(o)
         },
+        text: this.ctx.$t('loadMore'),
       })
       this.$el.append(this.readMoreBtn.$el)
 
       // 滚动到底部自动加载
-      if (this.conf.pagination?.autoLoad) {
+      if (this.conf.pagination.autoLoad) {
         // 添加滚动事件监听
         const at = this.scrollListenerAt || document
         if (this.autoLoadScrollEvent) at.removeEventListener('scroll', this.autoLoadScrollEvent) // 解除原有
@@ -228,14 +238,14 @@ export default class ListLite extends Component {
 
     // 加载更多按钮显示错误
     if (offset !== 0 && this.pageMode === 'read-more') {
-      this.readMoreBtn?.showErr(`获取失败`)
+      this.readMoreBtn?.showErr(this.$t('loadFail'))
       return
     }
 
     // 显示错误对话框
-    const $err = Utils.createElement(`<span>${msg}，无法获取评论列表数据<br/></span>`)
+    const $err = Utils.createElement(`<span>${msg}，${this.$t('listLoadFailMsg')}<br/></span>`)
 
-    const $retryBtn = Utils.createElement('<span style="cursor:pointer;">点击重新获取</span>')
+    const $retryBtn = Utils.createElement(`<span style="cursor:pointer;">${this.$t('listRetry')}</span>`)
     $retryBtn.onclick = () => (this.fetchComments(0))
     $err.appendChild($retryBtn)
 
@@ -265,7 +275,7 @@ export default class ListLite extends Component {
   /** 刷新界面 */
   public refreshUI() {
     // 无评论
-    const isNoComment = this.comments.length <= 0
+    const isNoComment = this.commentList.length <= 0
     let $noComment = this.$commentsWrap.querySelector<HTMLElement>('.atk-list-no-comment')
 
     if (isNoComment) {
@@ -283,15 +293,26 @@ export default class ListLite extends Component {
   }
 
   /** 创建新评论 */
-  protected createComment(data: CommentData) {
-    const comment = new Comment(this.ctx, data)
-    comment.afterRender = () => {
-      if (this.renderComment) this.renderComment(comment)
-    }
-    comment.onDelete = (c) => {
-      this.deleteComment(c)
-      this.refreshUI()
-    }
+  protected createComment(cData: CommentData, ctxData?: CommentData[]) {
+    if (!ctxData) ctxData = this.commentDataList
+
+    const comment = new Comment(this.ctx, cData, {
+      isFlatMode: this.flatMode,
+      afterRender: () => {
+        if (this.renderComment) this.renderComment(comment)
+      },
+      onDelete: (c: Comment) => {
+        this.deleteComment(c)
+        this.refreshUI()
+      },
+      replyTo: (cData.rid ? ctxData.find(c => c.id === cData.rid) : undefined)
+    })
+
+    // 渲染元素
+    comment.render()
+
+    // 放入 comment 总表中
+    this.commentList.push(comment)
 
     return comment
   }
@@ -303,72 +324,56 @@ export default class ListLite extends Component {
         this.putCommentFlatMode(commentData, srcData, 'append')
       })
     } else {
-      this.importCommentsNesting(srcData)
+      this.importCommentsNest(srcData)
     }
   }
 
   // 导入评论 · 嵌套模式
-  private importCommentsNesting(srcData: CommentData[]) {
-    // 查找并导入所有子评论
-    const loadChildren = (parentC: Comment) => {
-      const children = srcData.filter(o => o.rid === parentC.data.id)
-      children.forEach((childData: CommentData) => {
-        const childC = this.createComment(childData)
-        childC.render()
-
-        // 插入到父评论中
-        parentC.putChild(childC)
-
-        // 递归加载子评论
-        loadChildren(childC)
-      })
-    }
-
+  private importCommentsNest(srcData: CommentData[]) {
     // 遍历 root 评论
-    const rootComments = srcData.filter((o) => o.rid === 0)
-    rootComments.forEach((rootData: CommentData) => {
-      const rootC = this.createComment(rootData)
-      rootC.render()
+    const rootNodes = ListNest.makeNestCommentNodeList(srcData, this.nestSortBy, this.conf.nestMax)
+    rootNodes.forEach((rootNode: ListNest.CommentNode) => {
+      const rootC = this.createComment(rootNode.comment, srcData)
 
       // 显示并播放渐入动画
       this.$commentsWrap.appendChild(rootC.getEl())
-      rootC.playFadeInAnim()
-
-      // 评论放入 comments 总表中
-      this.comments.push(rootC)
+      rootC.getRender().playFadeAnim()
 
       // 加载子评论
-      loadChildren(rootC)
+      const that = this
+      ;(function loadChildren(parentC: Comment, parentNode: ListNest.CommentNode) {
+        parentNode.children.forEach((node: ListNest.CommentNode) => {
+          const childD = node.comment
+          const childC = that.createComment(childD, srcData)
+
+          // 插入到父评论中
+          parentC.putChild(childC)
+
+          // 递归加载子评论
+          loadChildren(childC, node)
+        })
+      })(rootC, rootNode)
 
       // 限高检测
-      rootC.checkHeightLimit()
+      rootC.getRender().checkHeightLimit()
     })
   }
 
   /** 导入评论 · 平铺模式 */
-  private putCommentFlatMode(cData: CommentData, srcData: CommentData[], insertMode: 'append'|'prepend') {
+  private putCommentFlatMode(cData: CommentData, ctxData: CommentData[], insertMode: 'append'|'prepend') {
     if (cData.is_collapsed) cData.is_allow_reply = false
-    const comment = this.createComment(cData)
-    if (cData.rid !== 0) {
-      const rComment = srcData.find(o => o.id === cData.rid)
-      if (rComment) comment.replyTo = rComment
-    }
-    comment.render()
-
-    // 将评论导入 comments 总表中
-    if (insertMode === 'append') this.comments.push(comment)
-    if (insertMode === 'prepend') this.comments.unshift(comment)
+    const comment = this.createComment(cData, ctxData)
 
     // 可见评论添加到界面
     // 注：不可见评论用于显示 “引用内容”
     if (cData.visible) {
       if (insertMode === 'append') this.$commentsWrap.append(comment.getEl())
       if (insertMode === 'prepend') this.$commentsWrap.prepend(comment.getEl())
-      comment.playFadeInAnim()
+      comment.getRender().playFadeAnim()
     }
 
     // 平铺评论插入后 · 内容限高检测
-    comment.checkHeightLimit()
+    comment.getRender().checkHeightLimit()
 
     return comment
   }
@@ -378,32 +383,30 @@ export default class ListLite extends Component {
     if (!this.flatMode) {
       // 嵌套模式
       const comment = this.createComment(commentData)
-      comment.render()
 
       if (commentData.rid === 0) {
         // root评论 新增
         this.$commentsWrap.prepend(comment.getEl())
-        this.comments.unshift(comment)
       } else {
         // 子评论 新增
         const parent = this.findComment(commentData.rid)
         if (parent) {
-          parent.putChild(comment)
+          parent.putChild(comment, (this.nestSortBy === 'DATE_ASC' ? 'append' : 'prepend'))
 
           // 若父评论存在 “子评论部分” 限高，取消限高
           comment.getParents().forEach((p) => {
-            if (p.$children) p.heightLimitRemove(p.$children)
+            p.getRender().heightLimitRemoveForChildren()
           })
         }
       }
 
-      comment.checkHeightLimit()
+      comment.getRender().checkHeightLimit()
 
       Ui.scrollIntoView(comment.getEl()) // 滚动到可以见
-      comment.playFadeInAnim() // 播放评论渐出动画
+      comment.getRender().playFadeAnim() // 播放评论渐出动画
     } else {
       // 平铺模式
-      const comment = this.putCommentFlatMode(commentData, this.comments.map(c => c.data), 'prepend')
+      const comment = this.putCommentFlatMode(commentData, this.commentDataList, 'prepend')
       Ui.scrollIntoView(comment.getEl()) // 滚动到可见
     }
 
@@ -415,47 +418,22 @@ export default class ListLite extends Component {
     this.ctx.trigger('comments-loaded')
   }
 
-  /** 遍历操作 Comment (包括子评论) */
-  protected eachComment(commentList: Comment[], action: (comment: Comment, levelList: Comment[]) => boolean|void) {
-    if (commentList.length === 0) return
-    commentList.every((item) => {
-      if (action(item, commentList) === false) return false
-      this.eachComment(item.getChildren(), action)
-      return true
-    })
-  }
-
   /** 查找评论项 */
-  protected findComment(id: number, src?: Comment[]): Comment|null {
-    if (!src) src = this.comments
-    let comment: Comment|null = null
-    this.eachComment(src, (item) => {
-      if (item.data.id === id) {
-        comment = item
-        return false
-      }
-      return true
-    })
-
-    return comment
+  protected findComment(id: number): Comment|undefined {
+    return this.commentList.find(c => c.getData().id === id)
   }
 
   /** 删除评论 */
-  public deleteComment(comment: number|Comment) {
-    let findComment: Comment|null
-    if (typeof comment === 'number') {
-      findComment = this.findComment(comment)
-      if (!findComment) throw Error(`未找到评论 ${comment}`)
-    } else findComment = comment
+  public deleteComment(_comment: number|Comment) {
+    let comment: Comment
+    if (typeof _comment === 'number') {
+      const findComment = this.findComment(_comment)
+      if (!findComment) throw Error(`Comment ${_comment} cannot be found`)
+      comment = findComment
+    } else comment = _comment
 
-    findComment.getEl().remove()
-    this.eachComment(this.comments, (item, levelList) => {
-      if (item === findComment) {
-        levelList.splice(levelList.indexOf(item), 1)
-        return false
-      }
-      return true
-    })
+    comment.getEl().remove()
+    this.commentList.splice(this.commentList.indexOf(comment), 1)
 
     if (this.data) this.data.total -= 1 // 评论数减 1
 
@@ -466,7 +444,7 @@ export default class ListLite extends Component {
   public clearAllComments() {
     this.$commentsWrap.innerHTML = ''
     this.data = undefined
-    this.comments = []
+    this.commentList = []
   }
 
   /** 更新未读数据 */
@@ -475,33 +453,33 @@ export default class ListLite extends Component {
 
     // 高亮评论
     if (this.unreadHighlight === true) {
-      this.eachComment(this.comments, (comment) => {
-        const notify = this.unread.find(o => o.comment_id === comment.data.id)
+      this.commentList.forEach((comment) => {
+        const notify = this.unread.find(o => o.comment_id === comment.getID())
         if (notify) {
-          comment.setUnread(true)
-          comment.setOpenURL(notify.read_link)
-          comment.openEvt = () => {
-            this.unread = this.unread.filter(o => o.comment_id !== comment.data.id) // remove
+          comment.getRender().setUnread(true)
+          comment.getRender().setOpenAction(() => {
+            window.open(notify.read_link)
+            this.unread = this.unread.filter(o => o.comment_id !== comment.getID()) // remove
             this.ctx.trigger('unread-update', {
               notifies: this.unread
             })
-          }
+          })
         } else {
-          comment.setUnread(false)
+          comment.getRender().setUnread(false)
         }
       })
     }
   }
 
   /** 版本检测 */
-  public versionCheck(name: '前端'|'后端', needVersion: string, curtVersion: string): boolean {
+  public versionCheck(name: 'frontend'|'backend', needVersion: string, curtVersion: string): boolean {
     const needUpdate = Utils.versionCompare(needVersion, curtVersion) === 1
     if (needUpdate) {
       // 需要更新
-      const errEl = Utils.createElement(`<div>Artalk ${name}版本已过时，请更新以获得完整体验<br/>`
+      const errEl = Utils.createElement(`<div>Artalk ${this.$t(name)}版本已过时，请更新以获得完整体验<br/>`
       + `如果你是管理员，请前往 “<a href="https://artalk.js.org/" target="_blank">官方文档</a>” 获得帮助`
       + `<br/><br/>`
-      + `<span style="color: var(--at-color-meta);">当前${name}版本 ${curtVersion}，需求版本 >= ${needVersion}</span><br/><br/>`
+      + `<span style="color: var(--at-color-meta);">当前${this.$t(name)}版本 ${curtVersion}，需求版本 >= ${needVersion}</span><br/><br/>`
       + `</div>`)
       const ignoreBtn = Utils.createElement('<span style="cursor:pointer;">忽略</span>')
       ignoreBtn.onclick = () => {

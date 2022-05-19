@@ -1,6 +1,6 @@
 import '../style/page-list.less'
 
-import Context from 'artalk/src/context'
+import Context from 'artalk/types/context'
 import * as Utils from 'artalk/src/lib/utils'
 import * as Ui from 'artalk/src/lib/ui'
 import { PageData } from 'artalk/types/artalk-data'
@@ -11,6 +11,7 @@ import { SidebarCtx } from '../main'
 import ItemTextEditor from '../lib/item-text-editor'
 
 export default class PageList extends Component {
+  $pageList!: HTMLElement
   $editor?: HTMLElement
   $inputer?: HTMLElement
 
@@ -19,7 +20,7 @@ export default class PageList extends Component {
   constructor(ctx: Context, sidebar: SidebarCtx) {
     super(ctx, sidebar)
 
-    this.$el = Utils.createElement(`<div class="atk-page-list"></div>`)
+    this.$el = Utils.createElement(`<div class="atk-page-list-wrap"></div>`)
   }
 
   /** 初始化 PageList (清空列表) */
@@ -30,7 +31,11 @@ export default class PageList extends Component {
     <span class="atk-update-all-title-btn"><i class="atk-icon atk-icon-sync"></i> <span class="atk-text">更新标题</span></span>
     <span class="atk-cache-flush-all-btn"><span class="atk-text">缓存清除</span></span>
     <span class="atk-cache-warm-up-btn"><span class="atk-text">缓存预热</span></span>
-    </div>`
+    </div>
+    <div class="atk-page-list"></div>
+    `
+
+    this.$pageList = this.$el.querySelector('.atk-page-list')!
 
     // 缓存操作按钮
     const $cacheFlushBtn = this.$el.querySelector<HTMLElement>('.atk-cache-flush-all-btn')!
@@ -103,7 +108,7 @@ export default class PageList extends Component {
 
     pages.forEach((page) => {
       const $page = this.renderPage(page)
-      this.$el.append($page)
+      this.$pageList.append($page)
     })
   }
 
@@ -203,7 +208,7 @@ export default class PageList extends Component {
     $keyEditBtn.onclick = () => openTextEditor('key')
 
     // 仅管理员可评
-    const adminOnlyActionBtn = new ActionBtn({
+    const adminOnlyActionBtn = new ActionBtn(this.ctx, {
       text: () => {
         $adminOnlyBtn.classList.remove('atk-green', 'atk-yellow')
         $adminOnlyBtn.classList.add(!page.admin_only ? 'atk-green' : 'atk-yellow')
