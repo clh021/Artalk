@@ -55,6 +55,8 @@ var en = {
   uploadFail: "Upload Failed",
   commentFail: "Failed to comment",
   restoredMsg: "Content has been restored",
+  onlyAdminCanReply: "Only admin can reply",
+  uploadLoginMsg: "Please fill in your name and email to upload",
   counter: "{count} Comments",
   sortLatest: "Latest",
   sortOldest: "Oldest",
@@ -118,6 +120,8 @@ const zhCN = {
   uploadFail: "\u4E0A\u4F20\u5931\u8D25",
   commentFail: "\u8BC4\u8BBA\u5931\u8D25",
   restoredMsg: "\u5185\u5BB9\u5DF2\u81EA\u52A8\u6062\u590D",
+  onlyAdminCanReply: "\u4EC5\u7BA1\u7406\u5458\u53EF\u8BC4\u8BBA",
+  uploadLoginMsg: "\u586B\u5165\u4F60\u7684\u540D\u5B57\u90AE\u7BB1\u624D\u80FD\u4E0A\u4F20\u54E6",
   counter: "{count} \u6761\u8BC4\u8BBA",
   sortLatest: "\u6700\u65B0",
   sortOldest: "\u6700\u65E9",
@@ -151,8 +155,8 @@ const zhCN = {
   hours: "\u5C0F\u65F6\u524D",
   days: "\u5929\u524D",
   now: "\u521A\u521A",
-  adminCheck: "\u6572\u5165\u5BC6\u7801\u6765\u9A8C\u8BC1\u7BA1\u7406\u5458\u8EAB\u4EFD\uFF1A",
-  captchaCheck: "\u6572\u5165\u9A8C\u8BC1\u7801\u7EE7\u7EED\uFF1A",
+  adminCheck: "\u952E\u5165\u5BC6\u7801\u6765\u9A8C\u8BC1\u7BA1\u7406\u5458\u8EAB\u4EFD\uFF1A",
+  captchaCheck: "\u952E\u5165\u9A8C\u8BC1\u7801\u7EE7\u7EED\uFF1A",
   confirm: "\u786E\u8BA4",
   cancel: "\u53D6\u6D88",
   msgCenter: "\u901A\u77E5\u4E2D\u5FC3",
@@ -204,83 +208,18 @@ class User {
     return !!this.data.nick && !!this.data.email;
   }
 }
-class Context {
-  constructor($root, conf) {
-    __publicField(this, "cid");
+class Component {
+  constructor(ctx) {
+    __publicField(this, "$el");
+    __publicField(this, "ctx");
     __publicField(this, "conf");
-    __publicField(this, "user");
-    __publicField(this, "$root");
-    __publicField(this, "eventList", []);
-    __publicField(this, "markedInstance");
-    __publicField(this, "markedReplacers", []);
-    this.cid = +new Date();
-    this.conf = conf;
-    this.user = new User(this);
-    this.$root = $root;
-    this.$root.setAttribute("atk-run-id", this.cid.toString());
-  }
-  on(name, handler, scope = "internal") {
-    this.eventList.push({ name, handler, scope });
-  }
-  off(name, handler, scope = "internal") {
-    this.eventList = this.eventList.filter((evt) => {
-      if (handler)
-        return !(evt.name === name && evt.handler === handler && evt.scope === scope);
-      return !(evt.name === name && evt.scope === scope);
-    });
-  }
-  trigger(name, payload, scope) {
-    this.eventList.filter((evt) => evt.name === name && (scope ? evt.scope === scope : true)).map((evt) => evt.handler).forEach((handler) => handler(payload));
+    this.ctx = ctx;
+    this.conf = ctx.conf;
   }
   $t(key, args = {}) {
-    let locales = this.conf.i18n;
-    if (typeof locales === "string") {
-      locales = internal[locales];
-    }
-    let str = (locales == null ? void 0 : locales[key]) || key;
-    str = str.replace(/\{\s*(\w+?)\s*\}/g, (_, token) => args[token] || "");
-    return str;
+    return this.ctx.$t(key, args);
   }
 }
-const defaults$3 = {
-  el: "",
-  pageKey: "",
-  pageTitle: "",
-  server: "",
-  site: "",
-  placeholder: "",
-  noComment: "",
-  sendBtn: "",
-  darkMode: false,
-  editorTravel: true,
-  flatMode: "auto",
-  nestMax: 2,
-  nestSort: "DATE_ASC",
-  emoticons: "https://cdn.jsdelivr.net/gh/ArtalkJS/Emoticons/grps/default.json",
-  vote: true,
-  voteDown: false,
-  uaBadge: true,
-  listSort: true,
-  pvEl: "#ArtalkPV",
-  gravatar: {
-    default: "mp",
-    mirror: "https://sdn.geekzu.org/avatar/"
-  },
-  pagination: {
-    pageSize: 20,
-    readMore: true,
-    autoLoad: true
-  },
-  heightLimit: {
-    content: 300,
-    children: 400
-  },
-  imgUpload: true,
-  reqTimeout: 15e3,
-  versionCheck: true,
-  useBackendConf: false,
-  i18n: "zh-CN"
-};
 function getDefaults() {
   return {
     baseUrl: null,
@@ -304,9 +243,9 @@ function getDefaults() {
     xhtml: false
   };
 }
-let defaults$2 = getDefaults();
+let defaults$3 = getDefaults();
 function changeDefaults(newDefaults) {
-  defaults$2 = newDefaults;
+  defaults$3 = newDefaults;
 }
 const escapeTest = /[&<>"']/;
 const escapeReplace = /[&<>"']/g;
@@ -558,7 +497,7 @@ function indentCodeCompensation(raw, text) {
 }
 class Tokenizer {
   constructor(options) {
-    this.options = options || defaults$2;
+    this.options = options || defaults$3;
   }
   space(src) {
     const cap = this.rules.block.newline.exec(src);
@@ -1277,7 +1216,7 @@ class Lexer {
   constructor(options) {
     this.tokens = [];
     this.tokens.links = /* @__PURE__ */ Object.create(null);
-    this.options = options || defaults$2;
+    this.options = options || defaults$3;
     this.options.tokenizer = this.options.tokenizer || new Tokenizer();
     this.tokenizer = this.options.tokenizer;
     this.tokenizer.options = this.options;
@@ -1625,7 +1564,7 @@ class Lexer {
 }
 class Renderer {
   constructor(options) {
-    this.options = options || defaults$2;
+    this.options = options || defaults$3;
   }
   code(code, infostring, escaped) {
     const lang = (infostring || "").match(/\S*/)[0];
@@ -1795,7 +1734,7 @@ class Slugger {
 }
 class Parser {
   constructor(options) {
-    this.options = options || defaults$2;
+    this.options = options || defaults$3;
     this.options.renderer = this.options.renderer || new Renderer();
     this.renderer = this.options.renderer;
     this.renderer.options = this.options;
@@ -2086,7 +2025,7 @@ marked$1.options = marked$1.setOptions = function(opt) {
   return marked$1;
 };
 marked$1.getDefaults = getDefaults;
-marked$1.defaults = defaults$2;
+marked$1.defaults = defaults$3;
 marked$1.use = function(...args) {
   const opts = merge({}, ...args);
   const extensions = marked$1.defaults.extensions || { renderers: {}, childTokens: {} };
@@ -2574,7 +2513,7 @@ function sanitizer$1(buffer, options) {
   }
 }
 var sanitizer_1 = sanitizer$1;
-var defaults$1 = {
+var defaults$2 = {
   allowedAttributes: {
     a: ["href", "name", "target", "title", "aria-label"],
     iframe: ["allowfullscreen", "frameborder", "src"],
@@ -2630,19 +2569,19 @@ var defaults$1 = {
   ],
   filter: null
 };
-var defaults_1 = defaults$1;
+var defaults_1 = defaults$2;
 var assign = assignment_1;
 var parser = parser_1;
 var sanitizer = sanitizer_1;
-var defaults = defaults_1;
+var defaults$1 = defaults_1;
 function insane(html, options, strict) {
   var buffer = [];
-  var configuration = strict === true ? options : assign({}, defaults, options);
+  var configuration = strict === true ? options : assign({}, defaults$1, options);
   var handler = sanitizer(buffer, configuration);
   parser(html, handler);
   return buffer.join("");
 }
-insane.defaults = defaults;
+insane.defaults = defaults$1;
 var insane_1 = insane;
 var hanabi$1 = { exports: {} };
 (function(module, exports) {
@@ -2813,8 +2752,12 @@ function versionCompare(a, b) {
   return 0;
 }
 function initMarked(ctx) {
-  if (!marked$1)
+  try {
+    if (!marked$1.name)
+      return;
+  } catch (e) {
     return;
+  }
   const renderer = new marked$1.Renderer();
   const orgLinkRenderer = renderer.link;
   renderer.link = (href, title, text) => {
@@ -2852,8 +2795,11 @@ function initMarked(ctx) {
 }
 function marked(ctx, src) {
   var _a;
-  const rawContent = ((_a = ctx.markedInstance) == null ? void 0 : _a.parse(src)) || src;
-  let dest = insane_1(rawContent, {
+  let markedContent = (_a = ctx.markedInstance) == null ? void 0 : _a.parse(src);
+  if (!markedContent) {
+    markedContent = src.replace(/```\s*([^]+?.*?[^]+?[^]+?)```/g, (_, code) => `<pre><code>${hanabi(code)}</code></pre>`).replace(/!\[(.*?)\]\((.*?)\)/g, (_, alt, imgSrc) => `<img src="${imgSrc}" alt="${alt}" />`).replace(/\[(.*?)\]\((.*?)\)/g, (_, text, link) => `<a href="${link}" target="_blank">${text}</a>`).replace(/\n/g, "<br>");
+  }
+  let dest = insane_1(markedContent, {
     allowedClasses: {},
     allowedSchemes: ["http", "https", "mailto"],
     allowedTags: [
@@ -2992,59 +2938,8 @@ function mergeDeep(target, source) {
   });
   return target;
 }
-class Dialog {
-  constructor(ctx, contentEl) {
-    __publicField(this, "ctx");
-    __publicField(this, "$el");
-    __publicField(this, "$content");
-    __publicField(this, "$actions");
-    this.ctx = ctx;
-    this.$el = createElement(`<div class="atk-layer-dialog-wrap">
-        <div class="atk-layer-dialog">
-          <div class="atk-layer-dialog-content"></div>
-          <div class="atk-layer-dialog-actions"></div>
-        </div>
-      </div>`);
-    this.$actions = this.$el.querySelector(".atk-layer-dialog-actions");
-    this.$content = this.$el.querySelector(".atk-layer-dialog-content");
-    this.$content.appendChild(contentEl);
-    return this;
-  }
-  setYes(handler) {
-    const btn = createElement(`<button data-action="confirm">${this.ctx.$t("confirm")}</button>`);
-    btn.onclick = this.onBtnClick(handler);
-    this.$actions.appendChild(btn);
-    return this;
-  }
-  setNo(handler) {
-    const btn = createElement(`<button data-action="cancel">${this.ctx.$t("cancel")}</button>`);
-    btn.onclick = this.onBtnClick(handler);
-    this.$actions.appendChild(btn);
-    return this;
-  }
-  onBtnClick(handler) {
-    return (evt) => {
-      const re = handler(evt.currentTarget, this);
-      if (re === void 0 || re === true) {
-        this.$el.remove();
-      }
-    };
-  }
-}
-class Component {
-  constructor(ctx) {
-    __publicField(this, "$el");
-    __publicField(this, "ctx");
-    __publicField(this, "conf");
-    this.ctx = ctx;
-    this.conf = ctx.conf;
-  }
-  $t(key, args = {}) {
-    return this.ctx.$t(key, args);
-  }
-}
 function showLoading(parentElem, conf) {
-  let $loading = parentElem.querySelector(".atk-loading");
+  let $loading = parentElem.querySelector(":scope > .atk-loading");
   if (!$loading) {
     $loading = createElement(`<div class="atk-loading atk-fade-in" style="display: none;">
       <div class="atk-loading-spinner">
@@ -3065,7 +2960,7 @@ function showLoading(parentElem, conf) {
   }
 }
 function hideLoading(parentElem) {
-  const $loading = parentElem.querySelector(".atk-loading");
+  const $loading = parentElem.querySelector(":scope > .atk-loading");
   if ($loading)
     $loading.style.display = "none";
 }
@@ -3113,7 +3008,7 @@ function showNotify(wrapElem, msg, type) {
     window.clearTimeout(timeoutFn);
   });
 }
-function playFadeAnim(elem, after, type) {
+function playFadeAnim(elem, after, type = "in") {
   elem.classList.add(`atk-fade-${type}`);
   const onAnimEnded = () => {
     elem.classList.remove(`atk-fade-${type}`);
@@ -3309,7 +3204,7 @@ function Fetch(ctx, input, init, timeout) {
     };
     if ((_a = json.data) == null ? void 0 : _a.need_captcha) {
       json = yield new Promise((resolve, reject) => {
-        ctx.trigger("checker-captcha", {
+        ctx.checkCaptcha({
           imgData: json.data.img_data,
           iframe: json.data.iframe,
           onSuccess: () => {
@@ -3322,7 +3217,7 @@ function Fetch(ctx, input, init, timeout) {
       });
     } else if (((_b = json.data) == null ? void 0 : _b.need_login) || isNoAccess) {
       json = yield new Promise((resolve, reject) => {
-        ctx.trigger("checker-admin", {
+        ctx.checkAdmin({
           onSuccess: () => {
             recall(resolve, reject);
           },
@@ -3962,6 +3857,20 @@ class Api {
       return p.pv;
     });
   }
+  stat(type, pageKeys, limit) {
+    return __async(this, null, function* () {
+      const params = {
+        type,
+        site_name: this.ctx.conf.site || ""
+      };
+      if (pageKeys)
+        params.page_keys = Array.isArray(pageKeys) ? pageKeys.join(",") : pageKeys;
+      if (limit)
+        params.limit = limit;
+      const data = yield POST(this.ctx, `${this.baseURL}/stat`, params);
+      return data;
+    });
+  }
   imgUpload(file) {
     return __async(this, null, function* () {
       const params = {
@@ -4023,9 +3932,251 @@ class Api {
     return POST(this.ctx, `${this.baseURL}/admin/cache-warm`, params);
   }
 }
+class Context {
+  constructor(conf, $root) {
+    __publicField(this, "api");
+    __publicField(this, "editor");
+    __publicField(this, "list");
+    __publicField(this, "sidebarLayer");
+    __publicField(this, "checkerLauncher");
+    __publicField(this, "cid");
+    __publicField(this, "conf");
+    __publicField(this, "user");
+    __publicField(this, "$root");
+    __publicField(this, "markedInstance");
+    __publicField(this, "markedReplacers", []);
+    __publicField(this, "commentList", []);
+    __publicField(this, "eventList", []);
+    this.cid = +new Date();
+    this.conf = conf;
+    this.user = new User(this);
+    this.$root = $root || document.createElement("div");
+    this.$root.setAttribute("atk-run-id", this.cid.toString());
+    this.$root.classList.add("artalk");
+    this.$root.innerHTML = "";
+    this.api = new Api(this);
+  }
+  setApi(api) {
+    this.api = api;
+  }
+  setEditor(editor2) {
+    this.editor = editor2;
+  }
+  setList(list2) {
+    this.list = list2;
+  }
+  setSidebarLayer(sidebarLayer2) {
+    this.sidebarLayer = sidebarLayer2;
+  }
+  setCheckerLauncher(checkerLauncher) {
+    this.checkerLauncher = checkerLauncher;
+  }
+  getApi() {
+    return this.api;
+  }
+  getCommentList() {
+    return this.commentList;
+  }
+  getCommentDataList() {
+    return this.commentList.map((c) => c.getData());
+  }
+  findComment(id) {
+    return this.commentList.find((c) => c.getData().id === id);
+  }
+  deleteComment(_comment) {
+    let comment2;
+    if (typeof _comment === "number") {
+      const findComment = this.findComment(_comment);
+      if (!findComment)
+        throw Error(`Comment ${_comment} cannot be found`);
+      comment2 = findComment;
+    } else
+      comment2 = _comment;
+    comment2.getEl().remove();
+    this.commentList.splice(this.commentList.indexOf(comment2), 1);
+    const listData = this.list.getData();
+    if (listData)
+      listData.total -= 1;
+    this.list.refreshUI();
+  }
+  clearAllComments() {
+    this.list.getCommentsWrapEl().innerHTML = "";
+    this.list.clearData();
+    this.commentList = [];
+  }
+  insertComment(commentData) {
+    this.list.insertComment(commentData);
+  }
+  replyComment(commentData, $comment, scroll) {
+    this.editor.setReply(commentData, $comment, scroll);
+  }
+  cancelReplyComment() {
+    this.editor.cancelReply();
+  }
+  updateNotifies(notifies) {
+    this.list.updateUnread(notifies);
+  }
+  listReload() {
+    this.list.reload();
+  }
+  listRefreshUI() {
+    this.list.refreshUI();
+  }
+  editorOpen() {
+    this.editor.open();
+  }
+  editorClose() {
+    this.editor.close();
+  }
+  editorShowLoading() {
+    this.editor.showLoading();
+  }
+  editorHideLoading() {
+    this.editor.hideLoading();
+  }
+  editorShowNotify(msg, type) {
+    this.editor.showNotify(msg, type);
+  }
+  editorTravel($el) {
+    this.editor.travel($el);
+  }
+  editorTravelBack() {
+    this.editor.travelBack();
+  }
+  showSidebar(payload) {
+    this.sidebarLayer.show(payload);
+  }
+  hideSidebar() {
+    this.sidebarLayer.hide();
+  }
+  checkAdmin(payload) {
+    this.checkerLauncher.checkAdmin(payload);
+  }
+  checkCaptcha(payload) {
+    this.checkerLauncher.checkCaptcha(payload);
+  }
+  checkAdminShowEl() {
+    const items = [];
+    this.$root.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    const { $wrap: $layerWrap } = GetLayerWrap(this);
+    if ($layerWrap)
+      $layerWrap.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    const $sidebarEl = document.querySelector(".atk-sidebar");
+    if ($sidebarEl)
+      $sidebarEl.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    items.forEach(($item) => {
+      if (this.user.data.isAdmin)
+        $item.classList.remove("atk-hide");
+      else
+        $item.classList.add("atk-hide");
+    });
+  }
+  on(name, handler, scope = "internal") {
+    this.eventList.push({ name, handler, scope });
+  }
+  off(name, handler, scope = "internal") {
+    this.eventList = this.eventList.filter((evt) => {
+      if (handler)
+        return !(evt.name === name && evt.handler === handler && evt.scope === scope);
+      return !(evt.name === name && evt.scope === scope);
+    });
+  }
+  trigger(name, payload, scope) {
+    this.eventList.filter((evt) => evt.name === name && (scope ? evt.scope === scope : true)).map((evt) => evt.handler).forEach((handler) => handler(payload));
+  }
+  $t(key, args = {}) {
+    let locales = this.conf.locale;
+    if (typeof locales === "string") {
+      locales = internal[locales];
+    }
+    let str = (locales == null ? void 0 : locales[key]) || key;
+    str = str.replace(/\{\s*(\w+?)\s*\}/g, (_, token) => args[token] || "");
+    return str;
+  }
+}
+const defaults = {
+  el: "",
+  pageKey: "",
+  pageTitle: "",
+  server: "",
+  site: "",
+  placeholder: "",
+  noComment: "",
+  sendBtn: "",
+  darkMode: false,
+  editorTravel: true,
+  flatMode: "auto",
+  nestMax: 2,
+  nestSort: "DATE_ASC",
+  emoticons: "https://cdn.jsdelivr.net/gh/ArtalkJS/Emoticons/grps/default.json",
+  vote: true,
+  voteDown: false,
+  uaBadge: true,
+  listSort: true,
+  preview: true,
+  countEl: "#ArtalkCount",
+  pvEl: "#ArtalkPV",
+  gravatar: {
+    default: "mp",
+    mirror: "https://sdn.geekzu.org/avatar/"
+  },
+  pagination: {
+    pageSize: 20,
+    readMore: true,
+    autoLoad: true
+  },
+  heightLimit: {
+    content: 300,
+    children: 400
+  },
+  imgUpload: true,
+  reqTimeout: 15e3,
+  versionCheck: true,
+  useBackendConf: false,
+  locale: "zh-CN"
+};
+class Dialog {
+  constructor(ctx, contentEl) {
+    __publicField(this, "ctx");
+    __publicField(this, "$el");
+    __publicField(this, "$content");
+    __publicField(this, "$actions");
+    this.ctx = ctx;
+    this.$el = createElement(`<div class="atk-layer-dialog-wrap">
+        <div class="atk-layer-dialog">
+          <div class="atk-layer-dialog-content"></div>
+          <div class="atk-layer-dialog-actions"></div>
+        </div>
+      </div>`);
+    this.$actions = this.$el.querySelector(".atk-layer-dialog-actions");
+    this.$content = this.$el.querySelector(".atk-layer-dialog-content");
+    this.$content.appendChild(contentEl);
+    return this;
+  }
+  setYes(handler) {
+    const btn = createElement(`<button data-action="confirm">${this.ctx.$t("confirm")}</button>`);
+    btn.onclick = this.onBtnClick(handler);
+    this.$actions.appendChild(btn);
+    return this;
+  }
+  setNo(handler) {
+    const btn = createElement(`<button data-action="cancel">${this.ctx.$t("cancel")}</button>`);
+    btn.onclick = this.onBtnClick(handler);
+    this.$actions.appendChild(btn);
+    return this;
+  }
+  onBtnClick(handler) {
+    return (evt) => {
+      const re = handler(evt.currentTarget, this);
+      if (re === void 0 || re === true) {
+        this.$el.remove();
+      }
+    };
+  }
+}
 const CaptchaChecker = {
   request(that, ctx, inputVal) {
-    return new Api(that.ctx).captchaCheck(inputVal);
+    return that.ctx.getApi().captchaCheck(inputVal);
   },
   body(that, ctx) {
     if (that.captchaConf.iframe) {
@@ -4055,7 +4206,7 @@ const CaptchaChecker = {
             return;
           let isPass = false;
           try {
-            const resp = yield new Api(that.ctx).captchaStatus();
+            const resp = yield that.ctx.getApi().captchaStatus();
             isPass = resp.is_pass;
           } catch (e) {
             isPass = false;
@@ -4076,7 +4227,7 @@ const CaptchaChecker = {
     const elem = createElement(`<span><img class="atk-captcha-img" src="${that.captchaConf.imgData || ""}">${that.ctx.$t("captchaCheck")}</span>`);
     elem.querySelector(".atk-captcha-img").onclick = () => {
       const imgEl = elem.querySelector(".atk-captcha-img");
-      new Api(that.ctx).captchaGet().then((imgData) => {
+      that.ctx.getApi().captchaGet().then((imgData) => {
         imgEl.setAttribute("src", imgData);
       }).catch((err) => {
         console.error("Failed to get captcha image ", err);
@@ -4099,7 +4250,7 @@ const AdminChecker = {
       email: that.ctx.user.data.email,
       password: inputVal
     };
-    return new Api(that.ctx).login(data.name, data.email, data.password);
+    return that.ctx.getApi().login(data.name, data.email, data.password);
   },
   body(that, ctx) {
     return createElement(`<span>${that.ctx.$t("adminCheck")}</span>`);
@@ -4110,7 +4261,7 @@ const AdminChecker = {
       token: userToken
     });
     that.ctx.trigger("user-changed", that.ctx.user.data);
-    that.ctx.trigger("list-reload");
+    that.ctx.listReload();
   },
   onError(that, ctx, err, inputVal, formEl) {
   }
@@ -4121,19 +4272,14 @@ class CheckerLauncher {
     __publicField(this, "launched", []);
     __publicField(this, "captchaConf", {});
     this.ctx = ctx;
-    this.initEventBind();
   }
-  initEventBind() {
-    this.ctx.on("checker-captcha", (conf) => {
-      if (conf.imgData)
-        this.captchaConf.imgData = conf.imgData;
-      if (conf.iframe)
-        this.captchaConf.iframe = conf.iframe;
-      this.fire(CaptchaChecker, conf);
-    });
-    this.ctx.on("checker-admin", (conf) => {
-      this.fire(AdminChecker, conf);
-    });
+  checkCaptcha(payload) {
+    this.captchaConf.imgData = payload.imgData;
+    this.captchaConf.iframe = payload.iframe;
+    this.fire(CaptchaChecker, payload);
+  }
+  checkAdmin(payload) {
+    this.fire(AdminChecker, payload);
   }
   fire(checker, payload) {
     if (this.launched.includes(checker))
@@ -4465,7 +4611,7 @@ class EmoticonsPlug extends EditorPlug {
       this.openGrp(0);
   }
   openGrp(index) {
-    var _a;
+    var _a, _b, _c;
     Array.from(this.$grpWrap.children).forEach((item) => {
       const el = item;
       if (el.getAttribute("data-index") !== String(index)) {
@@ -4474,8 +4620,8 @@ class EmoticonsPlug extends EditorPlug {
         el.style.display = "";
       }
     });
-    this.$grpSwitcher.querySelectorAll("span.active").forEach((item) => item.classList.remove("active"));
-    (_a = this.$grpSwitcher.querySelector(`span[data-index="${index}"]`)) == null ? void 0 : _a.classList.add("active");
+    (_a = this.$grpSwitcher) == null ? void 0 : _a.querySelectorAll("span.active").forEach((item) => item.classList.remove("active"));
+    (_c = (_b = this.$grpSwitcher) == null ? void 0 : _b.querySelector(`span[data-index="${index}"]`)) == null ? void 0 : _c.classList.add("active");
     this.changeListHeight();
   }
   changeListHeight() {
@@ -4520,7 +4666,7 @@ class UploadPlug extends EditorPlug {
     this.ctx.on("conf-updated", () => {
       if (!this.ctx.conf.imgUpload) {
         this.getBtn().setAttribute("atk-only-admin-show", "");
-        this.ctx.trigger("check-admin-show-el");
+        this.ctx.checkAdminShowEl();
       }
     });
     const uploadFromFileList = (files) => {
@@ -4558,7 +4704,7 @@ class UploadPlug extends EditorPlug {
       if (!fileExt || !this.allowImgExts.includes(fileExt[0]))
         return;
       if (!this.ctx.user.checkHasBasicUserInfo()) {
-        this.editor.showNotify("\u586B\u5165\u4F60\u7684\u540D\u5B57\u90AE\u7BB1\u624D\u80FD\u4E0A\u4F20\u54E6", "w");
+        this.editor.showNotify(this.ctx.$t("uploadLoginMsg"), "w");
         return;
       }
       let insertPrefix = "\n";
@@ -4568,7 +4714,11 @@ class UploadPlug extends EditorPlug {
       this.editor.insertContent(uploadPlaceholderTxt);
       let resp;
       try {
-        resp = yield new Api(this.ctx).imgUpload(file);
+        if (!this.ctx.conf.imgUploader) {
+          resp = yield this.ctx.getApi().imgUpload(file);
+        } else {
+          resp = { img_url: yield this.ctx.conf.imgUploader(file) };
+        }
       } catch (err) {
         console.error(err);
         this.editor.showNotify(`${this.ctx.$t("uploadFail")}\uFF0C${err.msg}`, "e");
@@ -4591,7 +4741,10 @@ class PreviewPlug extends EditorPlug {
     super(editor2);
     __publicField(this, "isBind", false);
     this.registerPanel(`<div class="atk-editor-plug-preview"></div>`);
-    this.registerBtn(`${this.editor.$t("preview")} <i title="Markdown is supported"><svg class="markdown" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3zM9 11H7V8L5.5 9.92 4 8v3H2V5h2l1.5 2L7 5h2v6zm2.99.5L9.5 8H11V5h2v3h1.5l-2.51 3.5z"></path></svg></i>`);
+    let btnText = this.editor.$t("preview");
+    if (this.ctx.markedInstance)
+      btnText += ` <i title="Markdown is supported"><svg class="markdown" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3zM9 11H7V8L5.5 9.92 4 8v3H2V5h2l1.5 2L7 5h2v6zm2.99.5L9.5 8H11V5h2v3h1.5l-2.51 3.5z"></path></svg></i>`;
+    this.registerBtn(btnText);
   }
   onPanelShow() {
     this.updateContent();
@@ -4639,14 +4792,14 @@ class HeaderInputPlug extends EditorPlug {
       this.queryUserInfo.abortFunc();
     this.queryUserInfo.timeout = window.setTimeout(() => {
       this.queryUserInfo.timeout = null;
-      const { req, abort } = new Api(this.ctx).userGet(this.ctx.user.data.nick, this.ctx.user.data.email);
+      const { req, abort } = this.ctx.getApi().userGet(this.ctx.user.data.nick, this.ctx.user.data.email);
       this.queryUserInfo.abortFunc = abort;
       req.then((data) => {
         var _a;
         if (!data.is_login) {
           this.ctx.user.logout();
         }
-        this.ctx.trigger("unread-update", { notifies: data.unread });
+        this.ctx.updateNotifies(data.unread);
         if (this.ctx.user.checkHasBasicUserInfo() && !data.is_login && ((_a = data.user) == null ? void 0 : _a.is_admin)) {
           this.showLoginDialog();
         }
@@ -4661,7 +4814,7 @@ class HeaderInputPlug extends EditorPlug {
     }, 400);
   }
   showLoginDialog() {
-    this.ctx.trigger("checker-admin", {
+    this.ctx.checkAdmin({
       onSuccess: () => {
       }
     });
@@ -4705,15 +4858,6 @@ class Editor extends Component {
     this.initTextarea();
     this.initPlugs();
     this.initSubmitBtn();
-    this.ctx.on("editor-open", () => this.open());
-    this.ctx.on("editor-close", () => this.close());
-    this.ctx.on("editor-reply", (p) => this.setReply(p.data, p.$el, p.scroll));
-    this.ctx.on("editor-reply-cancel", () => this.cancelReply());
-    this.ctx.on("editor-show-loading", () => showLoading(this.$el));
-    this.ctx.on("editor-hide-loading", () => hideLoading(this.$el));
-    this.ctx.on("editor-notify", (f) => this.showNotify(f.msg, f.type));
-    this.ctx.on("editor-travel", ($el) => this.travel($el));
-    this.ctx.on("editor-travel-back", () => this.travelBack());
     this.ctx.on("conf-updated", () => {
     });
   }
@@ -4851,6 +4995,12 @@ class Editor extends Component {
   showNotify(msg, type) {
     showNotify(this.$notifyWrap, msg, type);
   }
+  showLoading() {
+    showLoading(this.$el);
+  }
+  hideLoading() {
+    hideLoading(this.$el);
+  }
   submit() {
     return __async(this, null, function* () {
       if (this.getFinalContent().trim() === "") {
@@ -4858,9 +5008,9 @@ class Editor extends Component {
         return;
       }
       this.ctx.trigger("editor-submit");
-      showLoading(this.$el);
+      this.showLoading();
       try {
-        const nComment = yield new Api(this.ctx).add({
+        const nComment = yield this.ctx.getApi().add({
           content: this.getFinalContent(),
           nick: this.user.data.nick,
           email: this.user.data.email,
@@ -4873,7 +5023,7 @@ class Editor extends Component {
         if (this.replyComment !== null && this.replyComment.page_key !== this.ctx.conf.pageKey) {
           window.open(`${this.replyComment.page_url}#atk-comment-${nComment.id}`);
         }
-        this.ctx.trigger("list-insert", nComment);
+        this.ctx.insertComment(nComment);
         this.clearEditor();
         this.ctx.trigger("editor-submitted");
       } catch (err) {
@@ -4881,13 +5031,13 @@ class Editor extends Component {
         this.showNotify(`${this.$t("commentFail")}\uFF0C${err.msg || String(err)}`, "e");
         return;
       } finally {
-        hideLoading(this.$el);
+        this.hideLoading();
       }
     });
   }
   close() {
     if (!this.$textareaWrap.querySelector(".atk-comment-closed"))
-      this.$textareaWrap.prepend(createElement('<div class="atk-comment-closed">\u4EC5\u7BA1\u7406\u5458\u53EF\u8BC4\u8BBA</div>'));
+      this.$textareaWrap.prepend(createElement(`<div class="atk-comment-closed">${this.$t("onlyAdminCanReply")}</div>`));
     if (!this.user.data.isAdmin) {
       this.$textarea.style.display = "none";
       this.closePlugPanel();
@@ -4931,6 +5081,8 @@ class Editor extends Component {
     const disabledPlugs = [];
     if (!this.conf.emoticons)
       disabledPlugs.push("emoticons");
+    if (!this.conf.preview)
+      disabledPlugs.push("preview");
     this.ENABLED_PLUGS.forEach((Plug) => {
       const plugName = Plug.Name;
       if (disabledPlugs.includes(plugName))
@@ -5486,7 +5638,7 @@ class CommentRender {
       replyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (!this.cConf.onReplyBtnClick) {
-          this.ctx.trigger("editor-reply", { data: this.data, $el: this.$el });
+          this.ctx.replyComment(this.data, this.$el);
         } else {
           this.cConf.onReplyBtnClick();
         }
@@ -5667,7 +5819,7 @@ class CommentActions {
   }
   vote(type) {
     const actionBtn = type === "up" ? this.comment.getRender().voteBtnUp : this.comment.getRender().voteBtnDown;
-    new Api(this.ctx).vote(this.data.id, `comment_${type}`).then((v) => {
+    this.ctx.getApi().vote(this.data.id, `comment_${type}`).then((v) => {
       var _a, _b;
       this.data.vote_up = v.up;
       this.data.vote_down = v.down;
@@ -5690,10 +5842,10 @@ class CommentActions {
     } else if (type === "pinned") {
       modify.is_pinned = !modify.is_pinned;
     }
-    new Api(this.ctx).commentEdit(modify).then((data) => {
+    this.ctx.getApi().commentEdit(modify).then((data) => {
       btnElem.setLoading(false);
       this.comment.setData(data);
-      this.ctx.trigger("list-refresh-ui");
+      this.ctx.listRefreshUI();
     }).catch((err) => {
       console.error(err);
       btnElem.setError(this.ctx.$t("editFail"));
@@ -5703,7 +5855,7 @@ class CommentActions {
     if (btnElem.isLoading)
       return;
     btnElem.setLoading(true, `${this.ctx.$t("deleting")}...`);
-    new Api(this.ctx).commentDel(this.data.id, this.data.site_name).then(() => {
+    this.ctx.getApi().commentDel(this.data.id, this.data.site_name).then(() => {
       btnElem.setLoading(false);
       if (this.cConf.onDelete)
         this.cConf.onDelete(this.comment);
@@ -6083,12 +6235,11 @@ function makeNestCommentNodeList(srcData, sortBy = "DATE_DESC", nestMax = 2) {
   })(nodeList);
   return nodeList;
 }
-const backendMinVersion = "2.1.6";
+const backendMinVersion = "2.1.7";
 class ListLite extends Component {
   constructor(ctx) {
     super(ctx);
     __publicField(this, "$commentsWrap");
-    __publicField(this, "commentList", []);
     __publicField(this, "data");
     __publicField(this, "isLoading", false);
     __publicField(this, "noCommentText");
@@ -6118,10 +6269,15 @@ class ListLite extends Component {
         el.innerText = timeAgo(new Date(Number(date)), this.ctx);
       });
     }, 30 * 1e3);
-    this.ctx.on("unread-update", (data) => this.updateUnread(data.notifies));
   }
-  get commentDataList() {
-    return this.commentList.map((c) => c.getData());
+  getData() {
+    return this.data;
+  }
+  clearData() {
+    this.data = void 0;
+  }
+  getCommentsWrapEl() {
+    return this.$commentsWrap;
   }
   fetchComments(offset) {
     return __async(this, null, function* () {
@@ -6146,13 +6302,13 @@ class ListLite extends Component {
           this.pagination.setLoading(false);
       };
       showLoading$1();
-      this.ctx.trigger("comments-load");
+      this.ctx.trigger("list-load");
       if (this.pageMode === "read-more" && offset === 0) {
-        this.clearAllComments();
+        this.ctx.clearAllComments();
       }
       let listData;
       try {
-        listData = yield new Api(this.ctx).get(offset, this.pageSize, this.flatMode, this.paramsEditor);
+        listData = yield this.ctx.getApi().get(offset, this.pageSize, this.flatMode, this.paramsEditor);
       } catch (e) {
         this.onError(e.msg || String(e), offset, e.data);
         throw e;
@@ -6173,11 +6329,11 @@ class ListLite extends Component {
   onLoad(data, offset) {
     var _a, _b;
     if (this.pageMode === "pagination") {
-      this.clearAllComments();
+      this.ctx.clearAllComments();
     }
     this.data = data;
     const feMinVersion = ((_a = data.api_version) == null ? void 0 : _a.fe_min_version) || "0.0.0";
-    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, "2.2.12"))
+    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, "2.3.2"))
       return;
     if (this.ctx.conf.versionCheck && this.versionCheck("backend", backendMinVersion, (_b = data.api_version) == null ? void 0 : _b.version))
       return;
@@ -6187,8 +6343,8 @@ class ListLite extends Component {
     this.importComments(data.comments);
     this.refreshPagination(offset, this.flatMode ? data.total : data.total_roots);
     this.refreshUI();
-    this.ctx.trigger("unread-update", { notifies: data.unread || [] });
-    this.ctx.trigger("comments-loaded");
+    this.ctx.updateNotifies(data.unread || []);
+    this.ctx.trigger("list-loaded");
     this.ctx.trigger("conf-updated");
     if (this.onAfterLoad)
       this.onAfterLoad(data);
@@ -6243,7 +6399,7 @@ class ListLite extends Component {
         pageSize: this.pageSize,
         onChange: (o) => __async(this, null, function* () {
           if (this.ctx.conf.editorTravel === true) {
-            this.ctx.trigger("editor-travel-back");
+            this.ctx.editorTravelBack();
           }
           yield this.fetchComments(o);
           if (this.repositionAt) {
@@ -6282,13 +6438,13 @@ class ListLite extends Component {
       };
       sidebarView = `sites|${JSON.stringify(viewLoadParam)}`;
     }
-    adminBtn.onclick = () => this.ctx.trigger("sidebar-show", {
+    adminBtn.onclick = () => this.ctx.showSidebar({
       view: sidebarView
     });
     setError(this.$el, $err);
   }
   refreshUI() {
-    const isNoComment = this.commentList.length <= 0;
+    const isNoComment = this.ctx.getCommentList().length <= 0;
     let $noComment = this.$commentsWrap.querySelector(".atk-list-no-comment");
     if (isNoComment) {
       if (!$noComment) {
@@ -6299,11 +6455,14 @@ class ListLite extends Component {
     } else {
       $noComment == null ? void 0 : $noComment.remove();
     }
-    this.ctx.trigger("check-admin-show-el");
+    this.ctx.checkAdminShowEl();
+  }
+  reload() {
+    this.fetchComments(0);
   }
   createComment(cData, ctxData) {
     if (!ctxData)
-      ctxData = this.commentDataList;
+      ctxData = this.ctx.getCommentDataList();
     const comment2 = new Comment(this.ctx, cData, {
       isFlatMode: this.flatMode,
       afterRender: () => {
@@ -6311,13 +6470,13 @@ class ListLite extends Component {
           this.renderComment(comment2);
       },
       onDelete: (c) => {
-        this.deleteComment(c);
+        this.ctx.deleteComment(c);
         this.refreshUI();
       },
       replyTo: cData.rid ? ctxData.find((c) => c.id === cData.rid) : void 0
     });
     comment2.render();
-    this.commentList.push(comment2);
+    this.ctx.getCommentList().push(comment2);
     return comment2;
   }
   importComments(srcData) {
@@ -6367,7 +6526,7 @@ class ListLite extends Component {
       if (commentData.rid === 0) {
         this.$commentsWrap.prepend(comment2.getEl());
       } else {
-        const parent = this.findComment(commentData.rid);
+        const parent = this.ctx.findComment(commentData.rid);
         if (parent) {
           parent.putChild(comment2, this.nestSortBy === "DATE_ASC" ? "append" : "prepend");
           comment2.getParents().forEach((p) => {
@@ -6379,50 +6538,26 @@ class ListLite extends Component {
       scrollIntoView(comment2.getEl());
       comment2.getRender().playFadeAnim();
     } else {
-      const comment2 = this.putCommentFlatMode(commentData, this.commentDataList, "prepend");
+      const comment2 = this.putCommentFlatMode(commentData, this.ctx.getCommentDataList(), "prepend");
       scrollIntoView(comment2.getEl());
     }
     if (this.data)
       this.data.total += 1;
     this.refreshUI();
-    this.ctx.trigger("comments-loaded");
-  }
-  findComment(id) {
-    return this.commentList.find((c) => c.getData().id === id);
-  }
-  deleteComment(_comment) {
-    let comment2;
-    if (typeof _comment === "number") {
-      const findComment = this.findComment(_comment);
-      if (!findComment)
-        throw Error(`Comment ${_comment} cannot be found`);
-      comment2 = findComment;
-    } else
-      comment2 = _comment;
-    comment2.getEl().remove();
-    this.commentList.splice(this.commentList.indexOf(comment2), 1);
-    if (this.data)
-      this.data.total -= 1;
-    this.refreshUI();
-  }
-  clearAllComments() {
-    this.$commentsWrap.innerHTML = "";
-    this.data = void 0;
-    this.commentList = [];
+    this.ctx.trigger("list-loaded");
+    this.ctx.trigger("list-inserted", commentData);
   }
   updateUnread(notifies) {
     this.unread = notifies;
     if (this.unreadHighlight === true) {
-      this.commentList.forEach((comment2) => {
+      this.ctx.getCommentList().forEach((comment2) => {
         const notify = this.unread.find((o) => o.comment_id === comment2.getID());
         if (notify) {
           comment2.getRender().setUnread(true);
           comment2.getRender().setOpenAction(() => {
             window.open(notify.read_link);
             this.unread = this.unread.filter((o) => o.comment_id !== comment2.getID());
-            this.ctx.trigger("unread-update", {
-              notifies: this.unread
-            });
+            this.ctx.updateNotifies(this.unread);
           });
         } else {
           comment2.getRender().setUnread(false);
@@ -6461,14 +6596,14 @@ class List extends ListLite {
     __publicField(this, "goToCommentDelay", true);
     el.querySelector(".atk-list-body").append(this.$el);
     this.$el = el;
-    let flatMode = false;
-    if (this.ctx.conf.flatMode === "auto") {
+    if (this.ctx.conf.flatMode === true) {
+      this.flatMode = true;
+    } else if (this.conf.nestMax && this.conf.nestMax <= 1) {
+      this.flatMode = true;
+    } else if (this.ctx.conf.flatMode === "auto") {
       if (window.matchMedia("(max-width: 768px)").matches)
-        flatMode = true;
-    } else if (this.ctx.conf.flatMode === true) {
-      flatMode = true;
+        this.flatMode = true;
     }
-    this.flatMode = flatMode;
     this.pageMode = this.conf.pagination.readMore ? "read-more" : "pagination";
     this.pageSize = this.conf.pagination.pageSize || 20;
     this.repositionAt = this.$el;
@@ -6481,27 +6616,14 @@ class List extends ListLite {
     if (this.ctx.conf.listSort) {
       this.initDropdown();
     }
-    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.2.12"}">Artalk</a>`;
-    this.ctx.on("list-reload", () => this.fetchComments(0));
-    this.ctx.on("list-refresh-ui", () => this.refreshUI());
-    this.ctx.on("list-import", (data) => this.importComments(data));
-    this.ctx.on("list-insert", (data) => this.insertComment(data));
-    this.ctx.on("list-delete", (comment2) => this.deleteComment(comment2.id));
-    this.ctx.on("list-update", (updateData) => {
-      updateData(this.data);
-      this.refreshUI();
-    });
-    this.ctx.on("unread-update", (data) => {
-      var _a;
-      return this.showUnreadBadge(((_a = data.notifies) == null ? void 0 : _a.length) || 0);
-    });
+    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.3.2"}">Artalk</a>`;
   }
   initListActionBtn() {
     this.$openSidebarBtn = this.$el.querySelector('[data-action="open-sidebar"]');
     this.$closeCommentBtn = this.$el.querySelector('[data-action="admin-close-comment"]');
     this.$unreadBadge = this.$el.querySelector(".atk-unread-badge");
     this.$openSidebarBtn.addEventListener("click", () => {
-      this.ctx.trigger("sidebar-show");
+      this.ctx.showSidebar();
     });
     this.$closeCommentBtn.addEventListener("click", () => {
       if (!this.data)
@@ -6519,13 +6641,13 @@ class List extends ListLite {
     } else {
       this.$openSidebarBtn.classList.add("atk-hide");
     }
-    this.ctx.trigger("check-admin-show-el");
+    this.ctx.checkAdminShowEl();
     this.$openSidebarBtn.querySelector(".atk-text").innerText = !this.ctx.user.data.isAdmin ? this.$t("msgCenter") : this.$t("ctrlCenter");
     if (!!this.data && !!this.data.page && this.data.page.admin_only === true) {
-      this.ctx.trigger("editor-close");
+      this.ctx.editorClose();
       this.$closeCommentBtn.innerHTML = this.$t("openComment");
     } else {
-      this.ctx.trigger("editor-open");
+      this.ctx.editorOpen();
       this.$closeCommentBtn.innerHTML = this.$t("closeComment");
     }
   }
@@ -6534,7 +6656,7 @@ class List extends ListLite {
     if (!this.goToCommentFounded)
       this.checkGoToCommentByUrlHash();
     if (this.ctx.conf.editorTravel === true) {
-      this.ctx.trigger("editor-travel-back");
+      this.ctx.editorTravelBack();
     }
   }
   checkGoToCommentByUrlHash() {
@@ -6547,7 +6669,7 @@ class List extends ListLite {
     }
     if (!commentId)
       return;
-    const comment2 = this.findComment(commentId);
+    const comment2 = this.ctx.findComment(commentId);
     if (!comment2) {
       if (this.readMoreBtn)
         this.readMoreBtn.click();
@@ -6557,11 +6679,9 @@ class List extends ListLite {
     }
     const notifyKey = getQueryParam("atk_notify_key");
     if (notifyKey) {
-      new Api(this.ctx).markRead(notifyKey).then(() => {
+      this.ctx.getApi().markRead(notifyKey).then(() => {
         this.unread = this.unread.filter((o) => o.comment_id !== commentId);
-        this.ctx.trigger("unread-update", {
-          notifies: this.unread
-        });
+        this.updateUnread(this.unread);
       });
     }
     comment2.getParents().forEach((p) => {
@@ -6583,15 +6703,15 @@ class List extends ListLite {
   adminPageEditSave() {
     if (!this.data || !this.data.page)
       return;
-    this.ctx.trigger("editor-show-loading");
-    new Api(this.ctx).pageEdit(this.data.page).then((page) => {
+    this.ctx.editorShowLoading();
+    this.ctx.getApi().pageEdit(this.data.page).then((page) => {
       if (this.data)
         this.data.page = __spreadValues({}, page);
       this.refreshUI();
     }).catch((err) => {
-      this.ctx.trigger("editor-notify", { msg: `${this.$t("editFail")}: ${err.msg || String(err)}`, type: "e" });
+      this.ctx.editorShowNotify(`${this.$t("editFail")}: ${err.msg || String(err)}`, "e");
     }).finally(() => {
-      this.ctx.trigger("editor-hide-loading");
+      this.ctx.editorHideLoading();
     });
   }
   showUnreadBadge(count) {
@@ -6663,6 +6783,10 @@ class List extends ListLite {
     });
     this.$dropdownWrap.append($dropdown);
   }
+  updateUnread(notifies) {
+    super.updateUnread(notifies);
+    this.showUnreadBadge((notifies == null ? void 0 : notifies.length) || 0);
+  }
 }
 var sidebarLayer = "";
 var SidebarHTML = '<div class="atk-sidebar-layer">\n  <div class="atk-sidebar-inner">\n    <div class="atk-sidebar-header">\n      <div class="atk-sidebar-close"><i class="atk-icon atk-icon-close"></i></div>\n    </div>\n    <div class="atk-sidebar-iframe-wrap"></div>\n  </div>\n</div>\n';
@@ -6682,20 +6806,18 @@ class SidebarLayer extends Component {
     this.$closeBtn.onclick = () => {
       this.hide();
     };
-    this.ctx.on("sidebar-show", (conf) => this.show(conf || {}));
-    this.ctx.on("sidebar-hide", () => this.hide());
     this.ctx.on("user-changed", () => {
       this.firstShow = true;
     });
   }
-  show(conf) {
-    return __async(this, null, function* () {
+  show() {
+    return __async(this, arguments, function* (conf = {}) {
       this.$el.style.transform = "";
       if (this.layer == null) {
         this.layer = new Layer(this.ctx, "sidebar", this.$el);
         this.layer.afterHide = () => {
           if (this.ctx.conf.editorTravel === true) {
-            this.ctx.trigger("editor-travel-back");
+            this.ctx.editorTravelBack();
           }
         };
       }
@@ -6705,11 +6827,11 @@ class SidebarLayer extends Component {
       }, 20);
       (() => __async(this, null, function* () {
         var _a;
-        const resp = yield new Api(this.ctx).loginStatus();
+        const resp = yield this.ctx.getApi().loginStatus();
         if (resp.is_admin && !resp.is_login) {
           (_a = this.layer) == null ? void 0 : _a.hide();
           this.firstShow = true;
-          this.ctx.trigger("checker-admin", {
+          this.ctx.checkAdmin({
             onSuccess: () => {
               setTimeout(() => {
                 this.show(conf);
@@ -6720,7 +6842,7 @@ class SidebarLayer extends Component {
           });
         }
       }))();
-      this.ctx.trigger("unread-update", { notifies: [] });
+      this.ctx.updateNotifies([]);
       if (this.firstShow) {
         this.$iframeWrap.innerHTML = "";
         this.$iframe = createElement("<iframe></iframe>");
@@ -6746,12 +6868,14 @@ class SidebarLayer extends Component {
         if (!this.conf.darkMode && isIframeSrcDarkMode)
           this.iframeLoad(this.$iframe.src.replace("&darkMode=1", ""));
       }
+      this.ctx.trigger("sidebar-show");
     });
   }
   hide() {
     var _a;
     this.$el.style.transform = "";
     (_a = this.layer) == null ? void 0 : _a.hide();
+    this.ctx.trigger("sidebar-hide");
   }
   iframeLoad(src) {
     if (!this.$iframe)
@@ -6763,69 +6887,111 @@ class SidebarLayer extends Component {
     };
   }
 }
+const PvCountWidget = (ctx) => {
+  initCountWidget({ ctx, pvAdd: true });
+};
+function initCountWidget(p) {
+  return __async(this, null, function* () {
+    const countEl = p.ctx.conf.countEl;
+    if (countEl && document.querySelector(countEl)) {
+      handleStatCount(p, { api: "page_comment", countEl });
+    }
+    const curtPagePvNum = p.pvAdd ? yield p.ctx.getApi().pv() : void 0;
+    const pvEl = p.ctx.conf.pvEl;
+    if (pvEl && document.querySelector(pvEl)) {
+      handleStatCount(p, {
+        api: "page_pv",
+        countEl: pvEl,
+        curtPageCount: curtPagePvNum
+      });
+    }
+  });
+}
+function handleStatCount(p, args) {
+  return __async(this, null, function* () {
+    let pageCounts = {};
+    const curtPageKey = p.ctx.conf.pageKey;
+    if (args.curtPageCount)
+      pageCounts[curtPageKey] = args.curtPageCount;
+    let queryPageKeys = Array.from(document.querySelectorAll(args.countEl)).map((e) => e.getAttribute("data-page-key") || curtPageKey).filter((pageKey) => pageCounts[pageKey] === void 0);
+    queryPageKeys = [...new Set(queryPageKeys)];
+    if (queryPageKeys.length > 0) {
+      const counts = yield p.ctx.getApi().stat(args.api, queryPageKeys);
+      pageCounts = __spreadValues(__spreadValues({}, pageCounts), counts);
+    }
+    document.querySelectorAll(args.countEl).forEach((el) => {
+      const pageKey = el.getAttribute("data-page-key") || curtPageKey;
+      el.innerHTML = `${Number(pageCounts[pageKey] || 0)}`;
+    });
+  });
+}
 const _Artalk = class {
   constructor(customConf) {
-    __publicField(this, "ctx");
     __publicField(this, "conf");
+    __publicField(this, "ctx");
     __publicField(this, "$root");
     __publicField(this, "checkerLauncher");
     __publicField(this, "editor");
     __publicField(this, "list");
     __publicField(this, "sidebarLayer");
-    this.conf = mergeDeep(_Artalk.defaults, customConf);
-    this.conf.server = this.conf.server.replace(/\/$/, "").replace(/\/api\/?$/, "");
-    if (!this.conf.pageKey) {
-      this.conf.pageKey = `${window.location.pathname}`;
-    }
-    if (!this.conf.pageTitle) {
-      this.conf.pageTitle = `${document.title}`;
-    }
-    if (this.conf.nestMax && this.conf.nestMax <= 1) {
-      this.conf.flatMode = true;
-    }
-    if (!!this.conf.el && this.conf.el instanceof HTMLElement) {
+    this.conf = _Artalk.HandelBaseConf(customConf);
+    if (this.conf.el instanceof HTMLElement)
       this.$root = this.conf.el;
-    } else {
+    this.ctx = new Context(this.conf, this.$root);
+    if (this.conf.useBackendConf)
+      return this.loadConfRemoteAndInitComponents();
+    this.initComponents();
+  }
+  initComponents() {
+    this.initLocale();
+    this.initLayer();
+    this.initDarkMode();
+    initMarked(this.ctx);
+    this.checkerLauncher = new CheckerLauncher(this.ctx);
+    this.ctx.setCheckerLauncher(this.checkerLauncher);
+    this.editor = new Editor(this.ctx);
+    this.ctx.setEditor(this.editor);
+    this.$root.appendChild(this.editor.$el);
+    this.list = new List(this.ctx);
+    this.ctx.setList(this.list);
+    this.$root.appendChild(this.list.$el);
+    this.sidebarLayer = new SidebarLayer(this.ctx);
+    this.ctx.setSidebarLayer(this.sidebarLayer);
+    this.$root.appendChild(this.sidebarLayer.$el);
+    this.list.fetchComments(0);
+    this.initEventBind();
+    _Artalk.Plugins.forEach((plugin) => {
+      if (typeof plugin === "function")
+        plugin(this.ctx);
+    });
+  }
+  static HandelBaseConf(customConf) {
+    const conf = mergeDeep(_Artalk.defaults, customConf);
+    if (typeof conf.el === "string" && !!conf.el) {
       try {
-        const $root = document.querySelector(this.conf.el);
-        if (!$root)
-          throw Error(`Sorry, target element "${this.conf.el}" was not found.`);
-        this.$root = $root;
+        const findEl = document.querySelector(conf.el);
+        if (!findEl)
+          throw Error(`Target element "${conf.el}" was not found.`);
+        conf.el = findEl;
       } catch (e) {
         console.error(e);
         throw new Error("Please check your Artalk `el` config.");
       }
     }
-    this.ctx = new Context(this.$root, this.conf);
-    this.$root.classList.add("artalk");
-    this.$root.innerHTML = "";
-    if (this.conf.useBackendConf) {
-      return (() => __async(this, null, function* () {
-        yield this.loadConfRemote();
-        this.initCore();
-        return this;
-      }))();
+    conf.server = conf.server.replace(/\/$/, "").replace(/\/api\/?$/, "");
+    if (!conf.pageKey) {
+      conf.pageKey = `${window.location.pathname}`;
     }
-    this.initCore();
+    if (!conf.pageTitle) {
+      conf.pageTitle = `${document.title}`;
+    }
+    return conf;
   }
-  initCore() {
-    this.initLayer();
-    this.initDarkMode();
-    this.checkerLauncher = new CheckerLauncher(this.ctx);
-    initMarked(this.ctx);
-    this.editor = new Editor(this.ctx);
-    this.$root.appendChild(this.editor.$el);
-    this.list = new List(this.ctx);
-    this.$root.appendChild(this.list.$el);
-    this.sidebarLayer = new SidebarLayer(this.ctx);
-    this.$root.appendChild(this.sidebarLayer.$el);
-    this.list.fetchComments(0);
-    this.initEventBind();
-    this.initPV();
-    _Artalk.Plugins.forEach((plugin) => {
-      if (typeof plugin === "function") {
-        plugin(this.ctx);
-      }
+  loadConfRemoteAndInitComponents() {
+    return __async(this, null, function* () {
+      yield this.loadConfRemote();
+      this.initComponents();
+      return this;
     });
   }
   loadConfRemote() {
@@ -6833,7 +6999,7 @@ const _Artalk = class {
       showLoading(this.$root);
       let backendConf = {};
       try {
-        backendConf = yield new Api(this.ctx).conf();
+        backendConf = yield this.ctx.getApi().conf();
       } catch (err) {
         console.error("Load config from remote err", err);
       }
@@ -6846,29 +7012,22 @@ const _Artalk = class {
       this.list.goToCommentDelay = false;
       this.list.checkGoToCommentByUrlHash();
     });
-    this.ctx.on("check-admin-show-el", () => {
-      const items = [];
-      this.$root.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-      const { $wrap: $layerWrap } = GetLayerWrap(this.ctx);
-      if ($layerWrap)
-        $layerWrap.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-      const $sidebarEl = document.querySelector(".atk-sidebar");
-      if ($sidebarEl)
-        $sidebarEl.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-      items.forEach(($item) => {
-        if (this.ctx.user.data.isAdmin)
-          $item.classList.remove("atk-hide");
-        else
-          $item.classList.add("atk-hide");
-      });
-    });
     this.ctx.on("user-changed", () => {
-      this.ctx.trigger("check-admin-show-el");
-      this.ctx.trigger("list-refresh-ui");
+      this.ctx.checkAdminShowEl();
+      this.ctx.listRefreshUI();
     });
   }
-  reload() {
-    this.list.fetchComments(0);
+  initLocale() {
+    if (typeof this.conf.locale === "string") {
+      if (this.conf.locale === "auto") {
+        this.conf.locale = navigator.languages ? navigator.languages[0] : navigator.language;
+      }
+      this.conf.locale = this.conf.locale.replace(/^([a-zA-Z]+)(-[a-zA-Z]+)?$/, (_, p1, p2) => p1.toLowerCase() + (p2 || "").toUpperCase());
+      if (!internal[this.conf.locale]) {
+        console.log(`Locale "${this.conf.locale}" not found.`);
+        this.conf.locale = "en";
+      }
+    }
   }
   initLayer() {
     Layer.BodyOrgOverflow = document.body.style.overflow;
@@ -6903,17 +7062,6 @@ const _Artalk = class {
       }
     }
   }
-  initPV() {
-    return __async(this, null, function* () {
-      const pvNum = yield new Api(this.ctx).pv();
-      if (Number.isNaN(Number(pvNum)))
-        return;
-      if (!this.conf.pvEl || !document.querySelector(this.conf.pvEl))
-        return;
-      const $pv = document.querySelector(this.conf.pvEl);
-      $pv.innerText = String(pvNum);
-    });
-  }
   on(name, handler) {
     this.ctx.on(name, handler, "external");
   }
@@ -6923,11 +7071,21 @@ const _Artalk = class {
   trigger(name, payload) {
     this.ctx.trigger(name, payload, "external");
   }
+  reload() {
+    this.ctx.listReload();
+  }
   static Use(plugin) {
     this.Plugins.push(plugin);
   }
+  static LoadCountWidget(customConf) {
+    const conf = this.HandelBaseConf(customConf);
+    const ctx = new Context(conf);
+    initCountWidget({ ctx, pvAdd: false });
+  }
 };
 let Artalk = _Artalk;
-__publicField(Artalk, "defaults", defaults$3);
-__publicField(Artalk, "Plugins", []);
+__publicField(Artalk, "defaults", defaults);
+__publicField(Artalk, "Plugins", [
+  PvCountWidget
+]);
 export { Artalk as default };
