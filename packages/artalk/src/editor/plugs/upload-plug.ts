@@ -1,5 +1,4 @@
 import * as Utils from '@/lib/utils'
-import Api from '@/api'
 import Editor from '../editor'
 import EditorPlug from './editor-plug'
 
@@ -37,7 +36,7 @@ export default class UploadPlug extends EditorPlug {
     this.ctx.on('conf-updated', () => {
       if (!this.ctx.conf.imgUpload) {
         this.getBtn()!.setAttribute('atk-only-admin-show', '')
-        this.ctx.trigger('check-admin-show-el')
+        this.ctx.checkAdminShowEl()
       }
     })
 
@@ -83,7 +82,7 @@ export default class UploadPlug extends EditorPlug {
 
     // 未登录提示
     if (!this.ctx.user.checkHasBasicUserInfo()) {
-      this.editor.showNotify('填入你的名字邮箱才能上传哦', 'w')
+      this.editor.showNotify(this.ctx.$t('uploadLoginMsg'), 'w')
       return
     }
 
@@ -98,7 +97,13 @@ export default class UploadPlug extends EditorPlug {
     // 上传图片
     let resp: any
     try {
-      resp = await new Api(this.ctx).imgUpload(file)
+      if (!this.ctx.conf.imgUploader) {
+        // 使用 ArtalkGo 进行图片上传
+        resp = await this.ctx.getApi().imgUpload(file)
+      } else {
+        // 使用自定义的图片上传器
+        resp = {img_url: await this.ctx.conf.imgUploader(file)}
+      }
     } catch (err: any) {
       console.error(err)
       this.editor.showNotify(`${this.ctx.$t('uploadFail')}，${err.msg}`, 'e')

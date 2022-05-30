@@ -2,9 +2,11 @@ import './style/main.less'
 
 import ArtalkConfig from '~/types/artalk-config'
 import { EventPayloadMap, Handler } from '~/types/event'
+import ArtalkPlug from '~/types/plug'
 import Context from '~/types/context'
 import ConcreteContext from './context'
 import defaults from './defaults'
+import { internal as internalLocales } from './i18n'
 
 import CheckerLauncher from './lib/checker'
 import Editor from './editor'
@@ -12,19 +14,20 @@ import List from './list'
 import SidebarLayer from './layer/sidebar-layer'
 
 import Layer, { GetLayerWrap } from './layer'
-import Api from './api'
 import * as Utils from './lib/utils'
 import * as Ui from './lib/ui'
+import * as Stat from './lib/stat'
 
 /**
  * Artalk
- * @link https://artalk.js.org
+ *
+ * @website https://artalk.js.org
  */
 export default class Artalk {
   public static readonly defaults: ArtalkConfig = defaults
 
-  public ctx!: Context
   public conf!: ArtalkConfig
+  public ctx!: Context
   public $root!: HTMLElement
 
   public checkerLauncher!: CheckerLauncher
@@ -32,79 +35,49 @@ export default class Artalk {
   public list!: List
   public sidebarLayer!: SidebarLayer
 
+  protected static Plugins: ArtalkPlug[] = [
+    Stat.PvCountWidget
+  ]
+
   constructor(customConf: Partial<ArtalkConfig>) {
-    // 配置
-    this.conf = Utils.mergeDeep(Artalk.defaults, customConf)
-    this.conf.server = this.conf.server.replace(/\/$/, '').replace(/\/api\/?$/, '')
+    /* 初始化基本配置 */
+    this.conf = Artalk.HandelBaseConf(customConf)
+    if (this.conf.el instanceof HTMLElement) this.$root = this.conf.el
 
-    // 默认 pageKey
-    if (!this.conf.pageKey) {
-      // @link http://bl.ocks.org/abernier/3070589
-      this.conf.pageKey = `${window.location.pathname}`
-    }
+    /* 初始化 Context */
+    this.ctx = new ConcreteContext(this.conf, this.$root)
 
-    // 默认 pageTitle
-    if (!this.conf.pageTitle) {
-      this.conf.pageTitle = `${document.title}`
-    }
+    // @ts-ignore 远程加载引用后端的配置
+    if (this.conf.useBackendConf) return this.loadConfRemoteAndInitComponents()
 
-    // 列表显示模式
-    if (this.conf.nestMax && this.conf.nestMax <= 1) {
-      this.conf.flatMode = true
-    }
-
-    // 装载元素
-    if (!!this.conf.el && this.conf.el instanceof HTMLElement) {
-      this.$root = this.conf.el
-    } else {
-      try {
-        const $root = document.querySelector<HTMLElement>(this.conf.el)
-        if (!$root) throw Error(`Sorry, target element "${this.conf.el}" was not found.`)
-        this.$root = $root
-      } catch (e) {
-        console.error(e)
-        throw new Error('Please check your Artalk `el` config.')
-      }
-    }
-
-    // Context 初始化
-    this.ctx = new ConcreteContext(this.$root, this.conf)
-
-    // 界面初始化
-    this.$root.classList.add('artalk')
-    this.$root.innerHTML = ''
-
-    // 初始化组件
-    if (this.conf.useBackendConf) {
-      // 复用后端的配置
-      // @ts-ignore
-      return (async () => {
-        await this.loadConfRemote()
-        this.initCore()
-        return this // Promise<Artalk>
-      })()
-    }
-
-    this.initCore()
+    /* 初始化组件 */
+    this.initComponents()
   }
 
-  private initCore() {
-    // 组件初始化
+  /** 组件初始化 */
+  private initComponents() {
+    this.initLocale()
     this.initLayer()
     this.initDarkMode()
+    Utils.initMarked(this.ctx)
+
+    // CheckerLauncher
     this.checkerLauncher = new CheckerLauncher(this.ctx)
-    Utils.initMarked(this.ctx) // 初始化 marked
+    this.ctx.setCheckerLauncher(this.checkerLauncher)
 
     // 编辑器
     this.editor = new Editor(this.ctx)
+    this.ctx.setEditor(this.editor)
     this.$root.appendChild(this.editor.$el)
 
     // 评论列表
     this.list = new List(this.ctx)
+    this.ctx.setList(this.list)
     this.$root.appendChild(this.list.$el)
 
     // 侧边栏
     this.sidebarLayer = new SidebarLayer(this.ctx)
+    this.ctx.setSidebarLayer(this.sidebarLayer)
     this.$root.appendChild(this.sidebarLayer.$el)
 
     // 评论获取
@@ -113,29 +86,66 @@ export default class Artalk {
     // 事件绑定初始化
     this.initEventBind()
 
-    // 其他
-    this.initPV()
-
     // 插件初始化
     Artalk.Plugins.forEach(plugin => {
-      if (typeof plugin === 'function') {
+      if (typeof plugin === 'function')
         plugin(this.ctx)
-      }
     })
   }
 
-  /** 获取远程配置 */
+  /** 基本配置初始化 */
+  private static HandelBaseConf(customConf: Partial<ArtalkConfig>): ArtalkConfig {
+    // 合并默认配置
+    const conf: ArtalkConfig = Utils.mergeDeep(Artalk.defaults, customConf)
+
+    // 绑定元素
+    if (typeof conf.el === 'string' && !!conf.el) {
+      try {
+        const findEl = document.querySelector<HTMLElement>(conf.el)
+        if (!findEl) throw Error(`Target element "${conf.el}" was not found.`)
+        conf.el = findEl
+      } catch (e) {
+        console.error(e)
+        throw new Error('Please check your Artalk `el` config.')
+      }
+    }
+
+    // 服务器配置
+    conf.server = conf.server.replace(/\/$/, '').replace(/\/api\/?$/, '')
+
+    // 默认 pageKey
+    if (!conf.pageKey) {
+      // @link http://bl.ocks.org/abernier/3070589
+      conf.pageKey = `${window.location.pathname}`
+    }
+
+    // 默认 pageTitle
+    if (!conf.pageTitle) {
+      conf.pageTitle = `${document.title}`
+    }
+
+    return conf
+  }
+
+  /** 初始化组件根据远程加载的配置 */
+  private async loadConfRemoteAndInitComponents() {
+    await this.loadConfRemote()
+    this.initComponents()
+    return this
+  }
+
+  /** 远程加载配置 */
   private async loadConfRemote() {
     Ui.showLoading(this.$root)
     let backendConf = {}
     try {
-      backendConf = await (new Api(this.ctx)).conf()
+      backendConf = await this.ctx.getApi().conf()
     } catch (err) { console.error("Load config from remote err", err) }
     this.ctx.conf = Utils.mergeDeep(this.ctx.conf, backendConf)
     Ui.hideLoading(this.$root)
   }
 
-  /** 事件绑定 · 初始化 */
+  /** 事件绑定初始化 */
   private initEventBind() {
     // 锚点快速跳转评论
     window.addEventListener('hashchange', () => {
@@ -143,50 +153,41 @@ export default class Artalk {
       this.list.checkGoToCommentByUrlHash()
     })
 
-    // 仅管理员显示控制
-    this.ctx.on('check-admin-show-el', () => {
-      const items: HTMLElement[] = []
-
-      this.$root.querySelectorAll<HTMLElement>(`[atk-only-admin-show]`).forEach(item => items.push(item))
-
-      // for layer
-      const { $wrap: $layerWrap } = GetLayerWrap(this.ctx)
-      if ($layerWrap) $layerWrap.querySelectorAll<HTMLElement>(`[atk-only-admin-show]`).forEach(item => items.push(item))
-
-      // for sidebar
-      // TODO: 这个其实应该写在 packages/artalk-sidebar 里面的
-      const $sidebarEl = document.querySelector<HTMLElement>('.atk-sidebar')
-      if ($sidebarEl) $sidebarEl.querySelectorAll<HTMLElement>(`[atk-only-admin-show]`).forEach(item => items.push(item))
-
-      items.forEach(($item: HTMLElement) => {
-        if (this.ctx.user.data.isAdmin)
-          $item.classList.remove('atk-hide')
-        else
-          $item.classList.add('atk-hide')
-      })
-    })
-
     // 本地用户数据变更
     this.ctx.on('user-changed', () => {
-      this.ctx.trigger('check-admin-show-el')
-      this.ctx.trigger('list-refresh-ui')
+      this.ctx.checkAdminShowEl()
+      this.ctx.listRefreshUI()
     })
   }
 
-  /** 重新加载 */
-  public reload() {
-    this.list.fetchComments(0)
+  /** 语言初始化 */
+  private initLocale() {
+    if (typeof this.conf.locale === 'string') {
+      if (this.conf.locale === 'auto') { // 自动切换
+        this.conf.locale = ((navigator.languages) ? navigator.languages[0] : navigator.language)
+      }
+
+      this.conf.locale = this.conf.locale.replace(
+        /^([a-zA-Z]+)(-[a-zA-Z]+)?$/,
+        (_, p1: string, p2: string) => (p1.toLowerCase() + (p2 || '').toUpperCase())
+      )
+
+      if (!internalLocales[this.conf.locale]) { // 语言不存在时，使用 en
+        console.log(`Locale "${this.conf.locale}" not found.`)
+        this.conf.locale = 'en'
+      }
+    }
   }
 
   /** Layer 初始化 */
-  initLayer() {
+  private initLayer() {
     // 记录页面原始 Styles
     Layer.BodyOrgOverflow = document.body.style.overflow
     Layer.BodyOrgPaddingRight = document.body.style.paddingRight
   }
 
-  /** 暗黑模式 · 初始化 */
-  public initDarkMode() {
+  /** 暗黑模式初始化 */
+  private initDarkMode() {
     if (this.conf.darkMode === 'auto') {
       // 自动切换暗黑模式，事件监听
       const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)')
@@ -197,7 +198,7 @@ export default class Artalk {
     }
   }
 
-  /** 暗黑模式 · 设定 */
+  /** 设置暗黑模式 */
   public setDarkMode(darkMode: boolean) {
     const darkModeClassName = 'atk-dark-mode'
 
@@ -221,21 +222,6 @@ export default class Artalk {
     }
   }
 
-  /** PV */
-  public async initPV() {
-    const pvNum = await new Api(this.ctx).pv()
-    if (Number.isNaN(Number(pvNum)))
-      return
-
-    if (!this.conf.pvEl || !document.querySelector(this.conf.pvEl))
-      return
-
-    const $pv = document.querySelector<HTMLElement>(this.conf.pvEl)!
-    // $pv.innerText = '-' // 默认占位符
-
-    $pv.innerText = String(pvNum)
-  }
-
   /** 监听事件 */
   public on<K extends keyof EventPayloadMap>(name: K, handler: Handler<EventPayloadMap[K]>) {
     this.ctx.on(name, handler, 'external')
@@ -251,11 +237,20 @@ export default class Artalk {
     this.ctx.trigger(name, payload, 'external')
   }
 
-  /** Plugins */
-  protected static Plugins: ((ctx: Context) => void)[] = []
+  /** 重新加载 */
+  public reload() {
+    this.ctx.listReload()
+  }
 
-  /** Enable Plugin */
-  public static Use(plugin: ((ctx: Context) => void)) {
+  /** Use Plugin */
+  public static Use(plugin: ArtalkPlug) {
     this.Plugins.push(plugin)
+  }
+
+  /** 装载数量统计元素 */
+  public static LoadCountWidget(customConf: Partial<ArtalkConfig>) {
+    const conf = this.HandelBaseConf(customConf)
+    const ctx = new ConcreteContext(conf)
+    Stat.initCountWidget({ ctx, pvAdd: false })
   }
 }

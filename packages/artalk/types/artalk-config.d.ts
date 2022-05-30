@@ -64,7 +64,13 @@ export default interface ArtalkConfig {
   /** 评论投票反对按钮 */
   voteDown: boolean
 
-  /** PV 元素 Selector */
+  /** 评论预览功能 */
+  preview: boolean
+
+  /** 评论数绑定元素 Selector */
+  countEl: string
+
+  /** PV 数绑定元素 Selector */
   pvEl: string
 
   /** 暗黑模式 */
@@ -91,14 +97,17 @@ export default interface ArtalkConfig {
   /** 图片上传功能 */
   imgUpload: boolean
 
+  /** 图片上传器 */
+  imgUploader?: (file: File) => Promise<string>
+
   /** 版本检测 */
   versionCheck: boolean
 
   /** 应用后端配置 */
   useBackendConf: boolean
 
-  /** 国际化 */
-  i18n: I18n|string
+  /** 语言本地化 */
+  locale: I18n|string
 }
 
 /**

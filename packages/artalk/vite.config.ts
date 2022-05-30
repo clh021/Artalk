@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
-import commonConf from './vite-common.config'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import baseConf from './vite-base.config'
+import * as Utils from './src/lib/utils'
 
-export default defineConfig({
+export default Utils.mergeDeep(baseConf, defineConfig({
   build: {
     target: 'es2015',
     outDir: resolve(__dirname, "dist"),
@@ -17,15 +17,11 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        assetFileNames: assetInfo => {
-          if (/\.css$/.test(assetInfo.name)) {
-            return 'Artalk.css'
-          }
-          return "[name].[ext]"
-        }
+        assetFileNames: (assetInfo) => (/\.css$/.test(assetInfo.name) ? "Artalk.css" : "[name].[ext]")
       }
     }
   },
-  plugins: [tsconfigPaths()],
-  ...commonConf
-})
+  define: {
+    ARTALK_LITE: false,
+  },
+}))

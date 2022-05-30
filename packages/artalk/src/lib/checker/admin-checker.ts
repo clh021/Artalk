@@ -1,4 +1,3 @@
-import Api from '@/api'
 import * as Utils from '../utils'
 import { Checker } from '.'
 
@@ -12,7 +11,7 @@ const AdminChecker: Checker = {
       password: inputVal
     }
 
-    return new Api(that.ctx).login(data.name, data.email, data.password)
+    return that.ctx.getApi().login(data.name, data.email, data.password)
   },
 
   body(that, ctx) {
@@ -25,7 +24,7 @@ const AdminChecker: Checker = {
       token: userToken
     })
     that.ctx.trigger('user-changed', that.ctx.user.data)
-    that.ctx.trigger('list-reload')
+    that.ctx.listReload()
   },
 
   onError(that, ctx, err, inputVal, formEl) {}

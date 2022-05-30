@@ -27,7 +27,7 @@
         padding: 5px;
         cursor: pointer;
         user-select: none;
-        border-radius: 2px;
+        border-radius: (@block-radius / 2);
         font-size: 16px;
         min-width: 35px;
 
@@ -51,6 +51,7 @@
     background: var(--at-color-bg-transl);
     height: 30px;
     border-top: 1px solid var(--at-color-border);
+    border-bottom: 1px solid var(--at-color-border);
 
     & > span {
       user-select: none;

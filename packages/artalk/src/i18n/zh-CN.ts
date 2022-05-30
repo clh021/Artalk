@@ -14,6 +14,8 @@ const zhCN: I18n = {
   uploadFail: '上传失败',
   commentFail: '评论失败',
   restoredMsg: '内容已自动恢复',
+  onlyAdminCanReply: '仅管理员可评论',
+  uploadLoginMsg: '填入你的名字邮箱才能上传哦',
 
   /* List */
   counter: '{count} 条评论',
@@ -55,8 +57,8 @@ const zhCN: I18n = {
   now: '刚刚',
 
   /* Checker */
-  adminCheck: '敲入密码来验证管理员身份：',
-  captchaCheck: '敲入验证码继续：',
+  adminCheck: '键入密码来验证管理员身份：',
+  captchaCheck: '键入验证码继续：',
   confirm: '确认',
   cancel: '取消',
 

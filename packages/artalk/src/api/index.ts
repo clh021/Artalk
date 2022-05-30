@@ -274,6 +274,25 @@ export default class Api {
     return p.pv as number
   }
 
+  /** 统计 */
+  public async stat(
+    type: 'latest_comments'|'latest_pages'|'pv_most_pages'|'comment_most_pages'|
+          'page_pv'|'site_pv'|'page_comment'|'site_comment',
+    pageKeys?: string|string[],
+    limit?: number
+  ) {
+    const params: any = {
+      type,
+      site_name: this.ctx.conf.site || '',
+    }
+
+    if (pageKeys) params.page_keys = Array.isArray(pageKeys) ? pageKeys.join(',') : pageKeys
+    if (limit) params.limit = limit
+
+    const data = await POST<PageData[]|CommentData[]|object|number>(this.ctx, `${this.baseURL}/stat`, params)
+    return data
+  }
+
   /** 图片上传 */
   public async imgUpload(file: File) {
     const params: any = {

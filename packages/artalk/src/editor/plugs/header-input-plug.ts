@@ -1,4 +1,3 @@
-import Api from '@/api'
 import Editor from '../editor'
 import EditorPlug from './editor-plug'
 
@@ -40,7 +39,7 @@ export default class HeaderInputPlug extends EditorPlug {
     this.queryUserInfo.timeout = window.setTimeout(() => {
       this.queryUserInfo.timeout = null // 清理
 
-      const {req, abort} = new Api(this.ctx).userGet(
+      const {req, abort} = this.ctx.getApi().userGet(
         this.ctx.user.data.nick, this.ctx.user.data.email
       )
       this.queryUserInfo.abortFunc = abort
@@ -50,7 +49,7 @@ export default class HeaderInputPlug extends EditorPlug {
         }
 
         // 未读消息更新
-        this.ctx.trigger('unread-update', { notifies: data.unread, })
+        this.ctx.updateNotifies(data.unread)
 
         // 若用户为管理员，执行登陆操作
         if (this.ctx.user.checkHasBasicUserInfo() && !data.is_login && data.user?.is_admin) {
@@ -71,7 +70,7 @@ export default class HeaderInputPlug extends EditorPlug {
   }
 
   showLoginDialog() {
-    this.ctx.trigger('checker-admin', {
+    this.ctx.checkAdmin({
       onSuccess: () => {
       }
     })

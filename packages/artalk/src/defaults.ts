@@ -23,6 +23,8 @@ const defaults: ArtalkConfig = {
   voteDown: false,
   uaBadge: true,
   listSort: true,
+  preview: true,
+  countEl: '#ArtalkCount',
   pvEl: '#ArtalkPV',
 
   gravatar: {
@@ -46,7 +48,13 @@ const defaults: ArtalkConfig = {
   versionCheck: true,
   useBackendConf: false,
 
-  i18n: 'zh-CN',
+  locale: 'zh-CN',
+}
+
+if (ARTALK_LITE) {
+  defaults.vote = false
+  defaults.uaBadge = false
+  defaults.emoticons = false
 }
 
 export default defaults

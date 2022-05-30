@@ -4,7 +4,6 @@ import Context from 'artalk/types/context'
 import * as Utils from 'artalk/src/lib/utils'
 import * as Ui from 'artalk/src/lib/ui'
 import { SiteData } from 'artalk/types/artalk-data'
-import Api from 'artalk/src/api'
 
 interface SiteListFloaterConf {
   onSwitchSite: (siteName: string) => boolean|void
@@ -50,7 +49,7 @@ export default class SiteListFloater {
 
     renderSiteItem('所有站点', '_', '__ATK_SITE_ALL')
 
-    const sites = await new Api(this.ctx).siteGet()
+    const sites = await this.ctx.getApi().siteGet()
     sites.forEach((site) => {
       renderSiteItem(site.name, site.name.substring(0, 1))
     })
