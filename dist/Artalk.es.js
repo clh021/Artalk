@@ -112,7 +112,7 @@ const zhCN = {
   noComment: "\u300C\u6B64\u65F6\u65E0\u58F0\u80DC\u6709\u58F0\u300D",
   send: "\u53D1\u9001\u8BC4\u8BBA",
   nick: "\u6635\u79F0",
-  email: "\u90AE\u4EF6",
+  email: "\u90AE\u7BB1",
   link: "\u7F51\u5740",
   emoticon: "\u8868\u60C5",
   preview: "\u9884\u89C8",
@@ -6333,7 +6333,7 @@ class ListLite extends Component {
     }
     this.data = data;
     const feMinVersion = ((_a = data.api_version) == null ? void 0 : _a.fe_min_version) || "0.0.0";
-    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, "2.3.2"))
+    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, "2.3.3"))
       return;
     if (this.ctx.conf.versionCheck && this.versionCheck("backend", backendMinVersion, (_b = data.api_version) == null ? void 0 : _b.version))
       return;
@@ -6616,7 +6616,7 @@ class List extends ListLite {
     if (this.ctx.conf.listSort) {
       this.initDropdown();
     }
-    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.3.2"}">Artalk</a>`;
+    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.3.3"}">Artalk</a>`;
   }
   initListActionBtn() {
     this.$openSidebarBtn = this.$el.querySelector('[data-action="open-sidebar"]');
