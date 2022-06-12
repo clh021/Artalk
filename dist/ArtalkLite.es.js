@@ -2046,6 +2046,9 @@ class Context {
   listReload() {
     this.list.reload();
   }
+  reload() {
+    this.listReload();
+  }
   listRefreshUI() {
     this.list.refreshUI();
   }
@@ -2119,6 +2122,24 @@ class Context {
     let str = (locales == null ? void 0 : locales[key]) || key;
     str = str.replace(/\{\s*(\w+?)\s*\}/g, (_, token) => args[token] || "");
     return str;
+  }
+  setDarkMode(darkMode) {
+    const darkModeClassName = "atk-dark-mode";
+    this.conf.darkMode = darkMode;
+    this.trigger("conf-updated");
+    if (this.conf.darkMode) {
+      this.$root.classList.add(darkModeClassName);
+    } else {
+      this.$root.classList.remove(darkModeClassName);
+    }
+    const { $wrap: $layerWrap } = GetLayerWrap(this);
+    if ($layerWrap) {
+      if (this.conf.darkMode) {
+        $layerWrap.classList.add(darkModeClassName);
+      } else {
+        $layerWrap.classList.remove(darkModeClassName);
+      }
+    }
   }
 }
 const defaults = {
@@ -5076,24 +5097,6 @@ const _Artalk = class {
       this.setDarkMode(this.conf.darkMode || false);
     }
   }
-  setDarkMode(darkMode) {
-    const darkModeClassName = "atk-dark-mode";
-    this.ctx.conf.darkMode = darkMode;
-    this.ctx.trigger("conf-updated");
-    if (this.conf.darkMode) {
-      this.$root.classList.add(darkModeClassName);
-    } else {
-      this.$root.classList.remove(darkModeClassName);
-    }
-    const { $wrap: $layerWrap } = GetLayerWrap(this.ctx);
-    if ($layerWrap) {
-      if (this.conf.darkMode) {
-        $layerWrap.classList.add(darkModeClassName);
-      } else {
-        $layerWrap.classList.remove(darkModeClassName);
-      }
-    }
-  }
   on(name, handler) {
     this.ctx.on(name, handler, "external");
   }
@@ -5105,6 +5108,9 @@ const _Artalk = class {
   }
   reload() {
     this.ctx.listReload();
+  }
+  setDarkMode(darkMode) {
+    this.ctx.setDarkMode(darkMode);
   }
   static Use(plugin) {
     this.Plugins.push(plugin);
