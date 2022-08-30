@@ -31,6 +31,8 @@ export default class ListLite extends Component {
     getData(): ListData | undefined;
     clearData(): void;
     getCommentsWrapEl(): HTMLElement;
+    /** 加载动画 */
+    setLoading(val: boolean, isFirstLoad?: boolean): void;
     /** 评论获取 */
     fetchComments(offset: number): Promise<void>;
     protected onLoad(data: ListData, offset: number): void;

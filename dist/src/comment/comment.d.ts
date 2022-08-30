@@ -57,10 +57,11 @@ export default class Comment extends Component {
     getContentMarked(): string;
     /** 获取格式化后的日期 */
     getDateFormatted(): string;
-    /** 获取用户 UserAgent 浏览器 */
-    getUserUaBrowser(): string;
-    /** 获取用户 UserAgent 系统 */
-    getUserUaOS(): string;
+    /** 获取用户 UserAgent 信息 */
+    getUserUA(): {
+        browser: string;
+        os: string;
+    };
     /** 获取配置 */
     getConf(): CommentConf;
 }

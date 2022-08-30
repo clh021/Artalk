@@ -24,6 +24,10 @@ export default class CommentRender {
     private renderAvatar;
     /** 初始化 - 评论信息 */
     private renderHeader;
+    private renderHeader_Nick;
+    private renderHeader_VerifyBadge;
+    private renderHeader_Date;
+    private renderHeader_UABadge;
     /** 初始化 - 评论内容 */
     private renderContent;
     /** 初始化 - 层级嵌套模式显示 At */
@@ -33,7 +37,14 @@ export default class CommentRender {
     /** 初始化 - 待审核状态 */
     private renderPending;
     /** 初始化 - 评论操作按钮 */
-    private renderActionBtn;
+    private renderActions;
+    private renderActions_Vote;
+    private renderActions_Reply;
+    private renderActions_Collapse;
+    private renderActions_Moderator;
+    private renderActions_Pin;
+    private renderActions_Edit;
+    private renderActions_Del;
     /** 内容限高检测 */
     checkHeightLimit(): void;
     /** 目标内容限高检测 */

@@ -213,3 +213,15 @@ export declare const external: {
     'de-DE': {};
     'bn-IN': {};
 };
+/**
+ * get a locale object by language name
+ */
+declare function getLocaleSet(lang: string): I18n;
+/**
+ * get a i18n message by key
+ */
+declare function getI18n(locale: I18n | string, key: keyof I18n, args?: {
+    [key: string]: string;
+}): string;
+export { getLocaleSet, getI18n };
+export default getI18n;
