@@ -38,7 +38,7 @@ export default interface ContextApi {
   /* 设置持有的同事类 (中介者模式) */
   setApi(api: Api): void
   setEditor(editor: Editor): void
-  setList(list: ListLite): void
+  setList(list?: ListLite): void
   setSidebarLayer(list: SidebarLayer): void
   setCheckerLauncher(checkerLauncher: CheckerLauncher): void
 
@@ -90,6 +90,9 @@ export default interface ContextApi {
   /** 列表 - UI 更新 */
   listRefreshUI(): void
 
+  /** 列表 - HashGoto 功能检测 */
+  listHashGotoCheck(): void
+
   /** 显示侧边栏 */
   showSidebar(payload?: SidebarShowPayload): void
 
@@ -140,4 +143,7 @@ export default interface ContextApi {
 
   /** 设置暗黑模式 */
   setDarkMode(darkMode: boolean): void
+
+  /** 更新配置 */
+  updateConf(conf: Partial<ArtalkConfig>): void
 }

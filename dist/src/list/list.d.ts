@@ -20,6 +20,7 @@ export default class List extends ListLite {
     /** 管理员设置页面信息 */
     adminPageEditSave(): void;
     showUnreadBadge(count: number): void;
+    private dropdownLoaded;
     /** 初始化选择下拉层 */
     protected initDropdown(): void;
     updateUnread(notifies: NotifyData[]): void;

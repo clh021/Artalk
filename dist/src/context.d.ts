@@ -16,7 +16,7 @@ import Api from './api';
 export default class Context implements ContextApi {
     private api;
     private editor;
-    private list;
+    private list?;
     private sidebarLayer;
     private checkerLauncher;
     cid: number;
@@ -49,6 +49,7 @@ export default class Context implements ContextApi {
     listReload(): void;
     reload(): void;
     listRefreshUI(): void;
+    listHashGotoCheck(): void;
     editorOpen(): void;
     editorClose(): void;
     editorShowLoading(): void;
@@ -68,4 +69,8 @@ export default class Context implements ContextApi {
         [key: string]: string;
     }): string;
     setDarkMode(darkMode: boolean): void;
+    private darkModeMedia;
+    private darkModeAutoFunc?;
+    private refreshDarkModeConf;
+    updateConf(conf: Partial<ArtalkConfig>): void;
 }

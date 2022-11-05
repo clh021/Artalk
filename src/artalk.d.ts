@@ -2,45 +2,35 @@ import ArtalkConfig from '../types/artalk-config';
 import { EventPayloadMap, Handler } from '../types/event';
 import ArtalkPlug from '../types/plug';
 import Context from '../types/context';
-import CheckerLauncher from './lib/checker';
-import Editor from './editor';
-import List from './list';
-import SidebarLayer from './layer/sidebar-layer';
+import ListLite from './list/list-lite';
 /**
  * Artalk
  *
  * @website https://artalk.js.org
  */
 export default class Artalk {
+    static ListLite: typeof ListLite;
     static readonly defaults: ArtalkConfig;
     conf: ArtalkConfig;
     ctx: Context;
     $root: HTMLElement;
-    checkerLauncher: CheckerLauncher;
-    editor: Editor;
-    list: List;
-    sidebarLayer: SidebarLayer;
     /** Plugins (in global scope)  */
     protected static Plugins: ArtalkPlug[];
     /** Plugins (in a instance scope) */
     protected instancePlugins: ArtalkPlug[];
+    /** 禁用的组件 */
+    static DisabledComponents: string[];
     constructor(customConf: Partial<ArtalkConfig>);
     /** 组件初始化 */
     private initComponents;
     /** 基本配置初始化 */
-    private static HandelBaseConf;
-    /** 初始化组件根据远程加载的配置 */
-    private loadConfRemoteAndInitComponents;
-    /** 远程加载配置 */
-    private loadConfRemote;
+    static HandelBaseConf(customConf: Partial<ArtalkConfig>): ArtalkConfig;
     /** 事件绑定初始化 */
     private initEventBind;
     /** 语言初始化 */
     private initLocale;
     /** Layer 初始化 */
     private initLayer;
-    /** 暗黑模式初始化 */
-    private initDarkMode;
     /** 监听事件 */
     on<K extends keyof EventPayloadMap>(name: K, handler: Handler<EventPayloadMap[K]>): void;
     /** 解除监听事件 */

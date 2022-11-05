@@ -42,8 +42,8 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 import { marked as marked$1 } from "marked";
-var main = "";
-var en = {
+const main = "";
+const en = {
   placeholder: "Leave a comment",
   noComment: "No Comment",
   send: "Send",
@@ -184,12 +184,19 @@ const internal = {
   "en-US": en,
   "zh-CN": zhCN
 };
+const GLOBAL_LOCALES_KEY = "ArtalkI18n";
 function getLocaleSet(lang) {
-  lang = lang.replace(/^([a-zA-Z]+)(-[a-zA-Z]+)?$/, (_, p1, p2) => p1.toLowerCase() + (p2 || "").toUpperCase());
-  if (!internal[lang]) {
-    return internal.en;
+  lang = lang.replace(
+    /^([a-zA-Z]+)(-[a-zA-Z]+)?$/,
+    (_, p1, p2) => p1.toLowerCase() + (p2 || "").toUpperCase()
+  );
+  if (internal[lang]) {
+    return internal[lang];
   }
-  return internal[lang];
+  if (window[GLOBAL_LOCALES_KEY] && window[GLOBAL_LOCALES_KEY][lang]) {
+    return window[GLOBAL_LOCALES_KEY][lang];
+  }
+  return internal.en;
 }
 function getI18n(locale, key, args = {}) {
   if (typeof locale === "string") {
@@ -228,18 +235,6 @@ class User {
   }
   checkHasBasicUserInfo() {
     return !!this.data.nick && !!this.data.email;
-  }
-}
-class Component {
-  constructor(ctx) {
-    __publicField(this, "$el");
-    __publicField(this, "ctx");
-    __publicField(this, "conf");
-    this.ctx = ctx;
-    this.conf = ctx.conf;
-  }
-  $t(key, args = {}) {
-    return this.ctx.$t(key, args);
   }
 }
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
@@ -301,8 +296,8 @@ var assignment_1 = assignment;
 var lowercase$2 = function lowercase(string) {
   return typeof string === "string" ? string.toLowerCase() : string;
 };
-function toMap$2(list2) {
-  return list2.reduce(asKey, {});
+function toMap$2(list) {
+  return list.reduce(asKey, {});
 }
 function asKey(accumulator, item) {
   accumulator[item] = true;
@@ -640,13 +635,13 @@ var hanabi$1 = { exports: {} };
       return module2 = { exports: {} }, fn(module2, module2.exports), module2.exports;
     }
     var index$1 = createCommonjsModule(function(module2) {
-      var comment2 = module2.exports = function() {
-        return new RegExp("(?:" + comment2.line().source + ")|(?:" + comment2.block().source + ")", "gm");
+      var comment = module2.exports = function() {
+        return new RegExp("(?:" + comment.line().source + ")|(?:" + comment.block().source + ")", "gm");
       };
-      comment2.line = function() {
+      comment.line = function() {
         return /(?:^|\s)\/\/(.+?)$/gm;
       };
-      comment2.block = function() {
+      comment.block = function() {
         return /\/\*([\S\s]*?)\*\//gm;
       };
     });
@@ -687,7 +682,7 @@ var hanabi$1 = { exports: {} };
     return index;
   });
 })(hanabi$1);
-var hanabi = hanabi$1.exports;
+const hanabi = hanabi$1.exports;
 function createElement(htmlStr = "") {
   const div = document.createElement("div");
   div.innerHTML = htmlStr.trim();
@@ -849,7 +844,12 @@ function marked(ctx, src) {
   }
   let dest = insane_1(markedContent, {
     allowedClasses: {},
-    allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemes: [
+      "http",
+      "https",
+      "mailto",
+      "data"
+    ],
     allowedTags: [
       "a",
       "abbr",
@@ -986,14 +986,28 @@ function mergeDeep(target, source) {
   });
   return target;
 }
+class Component {
+  constructor(ctx) {
+    __publicField(this, "$el");
+    __publicField(this, "ctx");
+    __publicField(this, "conf");
+    this.ctx = ctx;
+    this.conf = ctx.conf;
+  }
+  $t(key, args = {}) {
+    return this.ctx.$t(key, args);
+  }
+}
 function showLoading(parentElem, conf) {
   let $loading = parentElem.querySelector(":scope > .atk-loading");
   if (!$loading) {
-    $loading = createElement(`<div class="atk-loading atk-fade-in" style="display: none;">
+    $loading = createElement(
+      `<div class="atk-loading atk-fade-in" style="display: none;">
       <div class="atk-loading-spinner">
         <svg viewBox="25 25 50 50"><circle cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10"></circle></svg>
       </div>
-    </div>`);
+    </div>`
+    );
     if (conf == null ? void 0 : conf.transparentBg)
       $loading.style.background = "transparent";
     parentElem.appendChild($loading);
@@ -1041,7 +1055,9 @@ function scrollIntoView(elem, enableAnim = true) {
 function showNotify(wrapElem, msg, type) {
   const colors = { s: "#57d59f", e: "#ff6f6c", w: "#ffc721", i: "#2ebcfc" };
   const timeout = 3e3;
-  const notifyElem = createElement(`<div class="atk-notify atk-fade-in" style="background-color: ${colors[type]}"><span class="atk-notify-content"></span></div>`);
+  const notifyElem = createElement(
+    `<div class="atk-notify atk-fade-in" style="background-color: ${colors[type]}"><span class="atk-notify-content"></span></div>`
+  );
   const notifyContentEl = notifyElem.querySelector(".atk-notify-content");
   notifyContentEl.innerHTML = htmlEncode(msg).replace("\n", "<br/>");
   wrapElem.appendChild(notifyElem);
@@ -1083,7 +1099,9 @@ function setError(parentElem, html, title = '<span class="atk-error-title">Artal
     return;
   }
   if (!elem) {
-    elem = createElement(`<div class="atk-error-layer">${title}<span class="atk-error-text"></span></div>`);
+    elem = createElement(
+      `<div class="atk-error-layer">${title}<span class="atk-error-text"></span></div>`
+    );
     parentElem.appendChild(elem);
   }
   const errorTextEl = elem.querySelector(".atk-error-text");
@@ -1228,95 +1246,13 @@ __publicField(Layer, "actionTimers", []);
 function GetLayerWrap(ctx) {
   let $wrap = document.querySelector(`.atk-layer-wrap#ctx-${ctx.cid}`);
   if (!$wrap) {
-    $wrap = createElement(`<div class="atk-layer-wrap" id="ctx-${ctx.cid}" style="display: none;"><div class="atk-layer-mask"></div></div>`);
+    $wrap = createElement(
+      `<div class="atk-layer-wrap" id="ctx-${ctx.cid}" style="display: none;"><div class="atk-layer-mask"></div></div>`
+    );
     document.body.appendChild($wrap);
   }
   const $mask = $wrap.querySelector(".atk-layer-mask");
   return { $wrap, $mask };
-}
-function Fetch(ctx, input, init, timeout) {
-  return __async(this, null, function* () {
-    var _a, _b;
-    if (ctx.user.data.token) {
-      const headers = new Headers(init.headers);
-      headers.set("Authorization", `Bearer ${ctx.user.data.token}`);
-      init.headers = headers;
-    }
-    const resp = yield timeoutFetch(ctx, input, timeout || ctx.conf.reqTimeout || 15e3, init);
-    const respHttpCode = resp.status;
-    const noAccessCodes = [401, 400];
-    const isNoAccess = noAccessCodes.includes(respHttpCode);
-    if (!resp.ok && !isNoAccess)
-      throw new Error(`${ctx.$t("reqGot")} ${respHttpCode}`);
-    let json = yield resp.json();
-    const recall = (resolve, reject) => {
-      Fetch(ctx, input, init).then((d) => {
-        resolve(d);
-      }).catch((e) => {
-        reject(e);
-      });
-    };
-    if ((_a = json.data) == null ? void 0 : _a.need_captcha) {
-      json = yield new Promise((resolve, reject) => {
-        ctx.checkCaptcha({
-          imgData: json.data.img_data,
-          iframe: json.data.iframe,
-          onSuccess: () => {
-            recall(resolve, reject);
-          },
-          onCancel: () => {
-            reject(json);
-          }
-        });
-      });
-    } else if (((_b = json.data) == null ? void 0 : _b.need_login) || isNoAccess) {
-      json = yield new Promise((resolve, reject) => {
-        ctx.checkAdmin({
-          onSuccess: () => {
-            recall(resolve, reject);
-          },
-          onCancel: () => {
-            reject(json);
-          }
-        });
-      });
-    }
-    if (!json.success)
-      throw json;
-    return json;
-  });
-}
-function POST(ctx, url, data) {
-  return __async(this, null, function* () {
-    const init = {
-      method: "POST"
-    };
-    data = __spreadValues({ site_name: ctx.conf.site || "" }, data || {});
-    init.body = ToFormData(data);
-    const json = yield Fetch(ctx, url, init);
-    return json.data || {};
-  });
-}
-function ToFormData(object) {
-  const formData = new FormData();
-  Object.keys(object).forEach((key) => formData.append(key, String(object[key])));
-  return formData;
-}
-function timeoutFetch(ctx, url, ms, opts) {
-  var _a;
-  const controller = new AbortController();
-  (_a = opts.signal) == null ? void 0 : _a.addEventListener("abort", () => controller.abort());
-  let promise = fetch(url, __spreadProps(__spreadValues({}, opts), { signal: controller.signal }));
-  if (ms > 0) {
-    const timer = setTimeout(() => controller.abort(), ms);
-    promise.finally(() => {
-      clearTimeout(timer);
-    });
-  }
-  promise = promise.catch((err) => {
-    throw (err || {}).name === "AbortError" ? new Error(ctx.$t("reqAborted")) : err;
-  });
-  return promise;
 }
 (function(factory) {
   factory();
@@ -1590,7 +1526,7 @@ function timeoutFetch(ctx, url, ms, opts) {
     return typeof self2.Request === "function" && !self2.Request.prototype.hasOwnProperty("signal") || !self2.AbortController;
   }
   function abortableFetchDecorator(patchTargets) {
-    if (typeof patchTargets === "function") {
+    if ("function" === typeof patchTargets) {
       patchTargets = {
         fetch: patchTargets
       };
@@ -1686,13 +1622,109 @@ function timeoutFetch(ctx, url, ms, opts) {
     });
   })(typeof self !== "undefined" ? self : commonjsGlobal);
 });
-class Api {
-  constructor(ctx) {
-    __publicField(this, "ctx");
-    __publicField(this, "baseURL");
-    this.ctx = ctx;
-    this.baseURL = `${ctx.conf.server}/api`;
+function Fetch(ctx, input, init, timeout) {
+  return __async(this, null, function* () {
+    var _a, _b;
+    if (ctx.user.data.token) {
+      const headers = new Headers(init.headers);
+      headers.set("Authorization", `Bearer ${ctx.user.data.token}`);
+      init.headers = headers;
+    }
+    const resp = yield timeoutFetch(ctx, input, timeout || ctx.conf.reqTimeout || 15e3, init);
+    const respHttpCode = resp.status;
+    const noAccessCodes = [401, 400];
+    const isNoAccess = noAccessCodes.includes(respHttpCode);
+    if (!resp.ok && !isNoAccess)
+      throw new Error(`${ctx.$t("reqGot")} ${respHttpCode}`);
+    let json = yield resp.json();
+    const recall = (resolve, reject) => {
+      Fetch(ctx, input, init).then((d) => {
+        resolve(d);
+      }).catch((e) => {
+        reject(e);
+      });
+    };
+    if ((_a = json.data) == null ? void 0 : _a.need_captcha) {
+      json = yield new Promise((resolve, reject) => {
+        ctx.checkCaptcha({
+          imgData: json.data.img_data,
+          iframe: json.data.iframe,
+          onSuccess: () => {
+            recall(resolve, reject);
+          },
+          onCancel: () => {
+            reject(json);
+          }
+        });
+      });
+    } else if (((_b = json.data) == null ? void 0 : _b.need_login) || isNoAccess) {
+      json = yield new Promise((resolve, reject) => {
+        ctx.checkAdmin({
+          onSuccess: () => {
+            recall(resolve, reject);
+          },
+          onCancel: () => {
+            reject(json);
+          }
+        });
+      });
+    }
+    if (!json.success)
+      throw json;
+    return json;
+  });
+}
+function POST(ctx, url, data) {
+  return __async(this, null, function* () {
+    const init = {
+      method: "POST"
+    };
+    data = __spreadValues({ site_name: ctx.conf.site || "" }, data || {});
+    init.body = ToFormData(data);
+    const json = yield Fetch(ctx, url, init);
+    return json.data || {};
+  });
+}
+function ToFormData(object) {
+  const formData = new FormData();
+  Object.keys(object).forEach((key) => formData.append(key, String(object[key])));
+  return formData;
+}
+function timeoutFetch(ctx, url, ms, opts) {
+  var _a;
+  const controller = new AbortController();
+  (_a = opts.signal) == null ? void 0 : _a.addEventListener("abort", () => controller.abort());
+  let promise = fetch(url, __spreadProps(__spreadValues({}, opts), { signal: controller.signal }));
+  if (ms > 0) {
+    const timer = setTimeout(() => controller.abort(), ms);
+    promise.finally(() => {
+      clearTimeout(timer);
+    });
   }
+  promise = promise.catch((err) => {
+    throw (err || {}).name === "AbortError" ? new Error(ctx.$t("reqAborted")) : err;
+  });
+  return promise;
+}
+class ApiBase {
+  constructor(api, ctx) {
+    __publicField(this, "api");
+    __publicField(this, "ctx");
+    this.api = api;
+    this.ctx = ctx;
+  }
+  POST(path, data) {
+    return __async(this, null, function* () {
+      return POST(this.ctx, this.api.baseURL + path, data);
+    });
+  }
+  Fetch(path, init, timeout) {
+    return __async(this, null, function* () {
+      return Fetch(this.ctx, this.api.baseURL + path, init, timeout);
+    });
+  }
+}
+class CommentApi extends ApiBase {
   get(offset, pageSize, flatMode, paramsEditor) {
     const params = {
       page_key: this.ctx.conf.pageKey,
@@ -1708,31 +1740,31 @@ class Api {
     }
     if (paramsEditor)
       paramsEditor(params);
-    return POST(this.ctx, `${this.baseURL}/get`, params);
+    return this.POST("/get", params);
   }
-  add(comment2) {
+  add(comment) {
     return __async(this, null, function* () {
       const params = {
-        name: comment2.nick,
-        email: comment2.email,
-        link: comment2.link,
-        content: comment2.content,
-        rid: comment2.rid,
-        page_key: comment2.page_key,
+        name: comment.nick,
+        email: comment.email,
+        link: comment.link,
+        content: comment.content,
+        rid: comment.rid,
+        page_key: comment.page_key,
         ua: yield getCorrectUserAgent()
       };
-      if (comment2.page_title)
-        params.page_title = comment2.page_title;
-      if (comment2.site_name)
-        params.site_name = comment2.site_name;
-      const data = yield POST(this.ctx, `${this.baseURL}/add`, params);
+      if (comment.page_title)
+        params.page_title = comment.page_title;
+      if (comment.site_name)
+        params.site_name = comment.site_name;
+      const data = yield this.POST("/add", params);
       return data.comment;
     });
   }
   commentEdit(data) {
     return __async(this, null, function* () {
       const params = __spreadValues({}, data);
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/comment-edit`, params);
+      const d = yield this.POST("/admin/comment-edit", params);
       return d.comment;
     });
   }
@@ -1741,8 +1773,138 @@ class Api {
       id: String(commentID),
       site_name: siteName || ""
     };
-    return POST(this.ctx, `${this.baseURL}/admin/comment-del`, params);
+    return this.POST("/admin/comment-del", params);
   }
+  vote(targetID, type) {
+    return __async(this, null, function* () {
+      const params = {
+        site_name: this.ctx.conf.site || "",
+        target_id: targetID,
+        type
+      };
+      if (this.ctx.user.checkHasBasicUserInfo()) {
+        params.name = this.ctx.user.data.nick;
+        params.email = this.ctx.user.data.email;
+      }
+      const data = yield this.POST("/vote", params);
+      return data;
+    });
+  }
+}
+class PageApi extends ApiBase {
+  pageGet(siteName, offset, limit) {
+    return __async(this, null, function* () {
+      const params = {
+        site_name: siteName || "",
+        offset: offset || 0,
+        limit: limit || 15
+      };
+      const d = yield this.POST("/admin/page-get", params);
+      return d;
+    });
+  }
+  pageEdit(data) {
+    return __async(this, null, function* () {
+      const params = {
+        id: data.id,
+        key: data.key,
+        title: data.title,
+        admin_only: data.admin_only,
+        site_name: data.site_name || this.ctx.conf.site
+      };
+      const d = yield this.POST("/admin/page-edit", params);
+      return d.page;
+    });
+  }
+  pageDel(pageKey, siteName) {
+    const params = {
+      key: String(pageKey),
+      site_name: siteName || ""
+    };
+    return this.POST("/admin/page-del", params);
+  }
+  pageFetch(id, siteName, getStatus) {
+    return __async(this, null, function* () {
+      const params = {};
+      if (id)
+        params.id = id;
+      if (siteName)
+        params.site_name = siteName;
+      if (getStatus)
+        params.get_status = getStatus;
+      const d = yield this.POST("/admin/page-fetch", params);
+      return d;
+    });
+  }
+  pv() {
+    return __async(this, null, function* () {
+      const params = {
+        site_name: this.ctx.conf.site || "",
+        page_key: this.ctx.conf.pageKey || "",
+        page_title: this.ctx.conf.pageTitle || ""
+      };
+      const p = yield this.POST("/pv", params);
+      return p.pv;
+    });
+  }
+  stat(type, pageKeys, limit) {
+    return __async(this, null, function* () {
+      const params = {
+        type,
+        site_name: this.ctx.conf.site || ""
+      };
+      if (pageKeys)
+        params.page_keys = Array.isArray(pageKeys) ? pageKeys.join(",") : pageKeys;
+      if (limit)
+        params.limit = limit;
+      const data = yield this.POST(`/stat`, params);
+      return data;
+    });
+  }
+}
+class SiteApi extends ApiBase {
+  siteGet() {
+    return __async(this, null, function* () {
+      const params = {};
+      const d = yield this.POST("/admin/site-get", params);
+      return d.sites;
+    });
+  }
+  siteAdd(name, urls) {
+    return __async(this, null, function* () {
+      const params = {
+        name,
+        urls,
+        site_name: ""
+      };
+      const d = yield this.POST("/admin/site-add", params);
+      return d.site;
+    });
+  }
+  siteEdit(data) {
+    return __async(this, null, function* () {
+      const params = {
+        id: data.id,
+        name: data.name || "",
+        urls: data.urls || ""
+      };
+      const d = yield this.POST("/admin/site-edit", params);
+      return d.site;
+    });
+  }
+  siteDel(id, delContent = false) {
+    const params = { id, del_content: delContent };
+    return this.POST("/admin/site-del", params);
+  }
+  export() {
+    return __async(this, null, function* () {
+      var _a;
+      const d = yield this.Fetch(`/admin/export`, { method: "POST" }, 0);
+      return ((_a = d.data) == null ? void 0 : _a.data) || "";
+    });
+  }
+}
+class UserApi extends ApiBase {
   login(name, email, password) {
     return __async(this, null, function* () {
       const params = {
@@ -1752,8 +1914,8 @@ class Api {
       };
       if (this.ctx.conf.site)
         params.site_name = this.ctx.conf.site;
-      const data = yield POST(this.ctx, `${this.baseURL}/login`, params);
-      return data.token;
+      const data = yield this.POST("/login", params);
+      return data;
     });
   }
   userGet(name, email) {
@@ -1763,7 +1925,7 @@ class Api {
       email,
       site_name: this.ctx.conf.site || ""
     };
-    const req = Fetch(this.ctx, `${this.baseURL}/user-get`, {
+    const req = this.Fetch(`/user-get`, {
       method: "POST",
       body: ToFormData(params),
       signal: ctrl.signal
@@ -1782,7 +1944,7 @@ class Api {
   }
   loginStatus() {
     return __async(this, null, function* () {
-      const data = yield POST(this.ctx, `${this.baseURL}/login-status`, {
+      const data = yield this.POST("/login-status", {
         name: this.ctx.user.data.nick,
         email: this.ctx.user.data.email
       });
@@ -1791,105 +1953,7 @@ class Api {
   }
   logout() {
     return __async(this, null, function* () {
-      return POST(this.ctx, `${this.baseURL}/logout`);
-    });
-  }
-  pageGet(siteName, offset, limit) {
-    return __async(this, null, function* () {
-      const params = {
-        site_name: siteName || "",
-        offset: offset || 0,
-        limit: limit || 15
-      };
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/page-get`, params);
-      return d;
-    });
-  }
-  pageEdit(data) {
-    return __async(this, null, function* () {
-      const params = {
-        id: data.id,
-        key: data.key,
-        title: data.title,
-        admin_only: data.admin_only,
-        site_name: data.site_name || this.ctx.conf.site
-      };
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/page-edit`, params);
-      return d.page;
-    });
-  }
-  pageDel(pageKey, siteName) {
-    const params = {
-      key: String(pageKey),
-      site_name: siteName || ""
-    };
-    return POST(this.ctx, `${this.baseURL}/admin/page-del`, params);
-  }
-  pageFetch(id, siteName, getStatus) {
-    return __async(this, null, function* () {
-      const params = {};
-      if (id)
-        params.id = id;
-      if (siteName)
-        params.site_name = siteName;
-      if (getStatus)
-        params.get_status = getStatus;
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/page-fetch`, params);
-      return d;
-    });
-  }
-  siteGet() {
-    return __async(this, null, function* () {
-      const params = {};
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/site-get`, params);
-      return d.sites;
-    });
-  }
-  siteAdd(name, urls) {
-    return __async(this, null, function* () {
-      const params = {
-        name,
-        urls
-      };
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/site-add`, params);
-      return d.site;
-    });
-  }
-  siteEdit(data) {
-    return __async(this, null, function* () {
-      const params = {
-        id: data.id,
-        name: data.name || "",
-        urls: data.urls || ""
-      };
-      const d = yield POST(this.ctx, `${this.baseURL}/admin/site-edit`, params);
-      return d.site;
-    });
-  }
-  siteDel(id, delContent = false) {
-    const params = { id, del_content: delContent };
-    return POST(this.ctx, `${this.baseURL}/admin/site-del`, params);
-  }
-  export() {
-    return __async(this, null, function* () {
-      var _a;
-      const d = yield Fetch(this.ctx, `${this.baseURL}/admin/export`, { method: "POST" }, 0);
-      return ((_a = d.data) == null ? void 0 : _a.data) || "";
-    });
-  }
-  vote(targetID, type) {
-    return __async(this, null, function* () {
-      const params = {
-        site_name: this.ctx.conf.site || "",
-        target_id: targetID,
-        type
-      };
-      if (this.ctx.user.checkHasBasicUserInfo()) {
-        params.name = this.ctx.user.data.nick;
-        params.email = this.ctx.user.data.email;
-      }
-      const data = yield POST(this.ctx, `${this.baseURL}/vote`, params);
-      return data;
+      return this.POST("/logout");
     });
   }
   markRead(notifyKey, readAll = false) {
@@ -1903,33 +1967,130 @@ class Api {
       params.name = this.ctx.user.data.nick;
       params.email = this.ctx.user.data.email;
     }
-    return POST(this.ctx, `${this.baseURL}/mark-read`, params);
+    return this.POST(`/mark-read`, params);
   }
-  pv() {
+  userList(offset, limit, type) {
     return __async(this, null, function* () {
       const params = {
-        site_name: this.ctx.conf.site || "",
-        page_key: this.ctx.conf.pageKey || "",
-        page_title: this.ctx.conf.pageTitle || ""
+        offset: offset || 0,
+        limit: limit || 15
       };
-      const p = yield POST(this.ctx, `${this.baseURL}/pv`, params);
-      return p.pv;
+      if (type)
+        params.type = type;
+      const d = yield this.POST("/admin/user-get", params);
+      return d;
     });
   }
-  stat(type, pageKeys, limit) {
+  userAdd(user, password) {
     return __async(this, null, function* () {
       const params = {
-        type,
-        site_name: this.ctx.conf.site || ""
+        name: user.name || "",
+        email: user.email || "",
+        password: password || "",
+        link: user.link || "",
+        is_admin: user.is_admin || false,
+        site_names: user.site_names_raw || "",
+        receive_email: user.receive_email || true,
+        badge_name: user.badge_name || "",
+        badge_color: user.badge_color || ""
       };
-      if (pageKeys)
-        params.page_keys = Array.isArray(pageKeys) ? pageKeys.join(",") : pageKeys;
-      if (limit)
-        params.limit = limit;
-      const data = yield POST(this.ctx, `${this.baseURL}/stat`, params);
+      const d = yield this.POST("/admin/user-add", params);
+      return d.user;
+    });
+  }
+  userEdit(user, password) {
+    return __async(this, null, function* () {
+      const params = {
+        id: user.id,
+        name: user.name || "",
+        email: user.email || "",
+        password: password || "",
+        link: user.link || "",
+        is_admin: user.is_admin || false,
+        site_names: user.site_names_raw || "",
+        receive_email: user.receive_email || true,
+        badge_name: user.badge_name || "",
+        badge_color: user.badge_color || ""
+      };
+      const d = yield this.POST("/admin/user-edit", params);
+      return d.user;
+    });
+  }
+  userDel(userID) {
+    return this.POST("/admin/user-del", {
+      id: String(userID)
+    });
+  }
+}
+class SystemApi extends ApiBase {
+  conf() {
+    return __async(this, null, function* () {
+      const data = yield this.POST(`/conf`);
+      const conf = data.frontend_conf || {};
+      if (conf.emoticons && typeof conf.emoticons === "string") {
+        conf.emoticons = conf.emoticons.trim();
+        if (conf.emoticons.startsWith("[") || conf.emoticons.startsWith("{")) {
+          conf.emoticons = JSON.parse(conf.emoticons);
+        } else if (conf.emoticons === "false") {
+          conf.emoticons = false;
+        }
+      }
+      return conf;
+    });
+  }
+  getSettings() {
+    return __async(this, null, function* () {
+      const data = yield this.POST("/admin/setting-get");
       return data;
     });
   }
+  saveSettings(yamlStr) {
+    return __async(this, null, function* () {
+      const data = yield this.POST("/admin/setting-save", {
+        data: yamlStr
+      });
+      return data;
+    });
+  }
+  version() {
+    return __async(this, null, function* () {
+      const resp = yield fetch(`${this.api.baseURL}/version`, { method: "POST" });
+      const data = yield resp.json();
+      return data;
+    });
+  }
+}
+class CaptchaApi extends ApiBase {
+  captchaGet() {
+    return __async(this, null, function* () {
+      const data = yield this.POST("/captcha/refresh");
+      return data.img_data || "";
+    });
+  }
+  captchaCheck(value) {
+    return __async(this, null, function* () {
+      const data = yield this.POST("/captcha/check", { value });
+      return data.img_data || "";
+    });
+  }
+  captchaStatus() {
+    return __async(this, null, function* () {
+      const data = yield this.POST("/captcha/status");
+      return data || { is_pass: false };
+    });
+  }
+}
+class AdminApi extends ApiBase {
+  cacheFlushAll() {
+    const params = { flush_all: true };
+    return this.POST("/admin/cache-flush", params);
+  }
+  cacheWarmUp() {
+    const params = {};
+    return this.POST("/admin/cache-warm", params);
+  }
+}
+class UploadApi extends ApiBase {
   imgUpload(file) {
     return __async(this, null, function* () {
       const params = {
@@ -1945,1366 +2106,36 @@ class Api {
         method: "POST",
         body: form
       };
-      const json = yield Fetch(this.ctx, `${this.baseURL}/img-upload`, init);
+      const json = yield this.Fetch("/img-upload", init);
       return json.data || {};
     });
   }
-  conf() {
-    return __async(this, null, function* () {
-      const data = yield POST(this.ctx, `${this.baseURL}/conf`);
-      const conf = data.frontend_conf || {};
-      if (conf.emoticons && typeof conf.emoticons === "string") {
-        conf.emoticons = conf.emoticons.trim();
-        if (conf.emoticons.startsWith("[") || conf.emoticons.startsWith("{")) {
-          conf.emoticons = JSON.parse(conf.emoticons);
-        } else if (conf.emoticons === "false") {
-          conf.emoticons = false;
-        }
-      }
-      return conf;
-    });
-  }
-  captchaGet() {
-    return __async(this, null, function* () {
-      const data = yield POST(this.ctx, `${this.baseURL}/captcha/refresh`);
-      return data.img_data || "";
-    });
-  }
-  captchaCheck(value) {
-    return __async(this, null, function* () {
-      const data = yield POST(this.ctx, `${this.baseURL}/captcha/check`, { value });
-      return data.img_data || "";
-    });
-  }
-  captchaStatus() {
-    return __async(this, null, function* () {
-      const data = yield POST(this.ctx, `${this.baseURL}/captcha/status`);
-      return data || { is_pass: false };
-    });
-  }
-  cacheFlushAll() {
-    const params = { flush_all: true };
-    return POST(this.ctx, `${this.baseURL}/admin/cache-flush`, params);
-  }
-  cacheWarmUp() {
-    const params = {};
-    return POST(this.ctx, `${this.baseURL}/admin/cache-warm`, params);
-  }
 }
-class Context {
-  constructor(conf, $root) {
-    __publicField(this, "api");
-    __publicField(this, "editor");
-    __publicField(this, "list");
-    __publicField(this, "sidebarLayer");
-    __publicField(this, "checkerLauncher");
-    __publicField(this, "cid");
-    __publicField(this, "conf");
-    __publicField(this, "user");
-    __publicField(this, "$root");
-    __publicField(this, "markedInstance");
-    __publicField(this, "markedReplacers", []);
-    __publicField(this, "commentList", []);
-    __publicField(this, "eventList", []);
-    this.cid = +new Date();
-    this.conf = conf;
-    this.user = new User(this);
-    this.$root = $root || document.createElement("div");
-    this.$root.setAttribute("atk-run-id", this.cid.toString());
-    this.$root.classList.add("artalk");
-    this.$root.innerHTML = "";
-    this.api = new Api(this);
-  }
-  setApi(api) {
-    this.api = api;
-  }
-  setEditor(editor2) {
-    this.editor = editor2;
-  }
-  setList(list2) {
-    this.list = list2;
-  }
-  setSidebarLayer(sidebarLayer2) {
-    this.sidebarLayer = sidebarLayer2;
-  }
-  setCheckerLauncher(checkerLauncher) {
-    this.checkerLauncher = checkerLauncher;
-  }
-  getApi() {
-    return this.api;
-  }
-  getCommentList() {
-    return this.commentList;
-  }
-  getCommentDataList() {
-    return this.commentList.map((c) => c.getData());
-  }
-  findComment(id) {
-    return this.commentList.find((c) => c.getData().id === id);
-  }
-  deleteComment(_comment) {
-    let comment2;
-    if (typeof _comment === "number") {
-      const findComment = this.findComment(_comment);
-      if (!findComment)
-        throw Error(`Comment ${_comment} cannot be found`);
-      comment2 = findComment;
-    } else
-      comment2 = _comment;
-    comment2.getEl().remove();
-    this.commentList.splice(this.commentList.indexOf(comment2), 1);
-    const listData = this.list.getData();
-    if (listData)
-      listData.total -= 1;
-    this.list.refreshUI();
-  }
-  clearAllComments() {
-    this.list.getCommentsWrapEl().innerHTML = "";
-    this.list.clearData();
-    this.commentList = [];
-  }
-  insertComment(commentData) {
-    this.list.insertComment(commentData);
-  }
-  updateComment(commentData) {
-    this.list.updateComment(commentData);
-  }
-  replyComment(commentData, $comment, scroll) {
-    this.editor.setReply(commentData, $comment, scroll);
-  }
-  cancelReplyComment() {
-    this.editor.cancelReply();
-  }
-  editComment(commentData, $comment) {
-    this.editor.setEditComment(commentData, $comment);
-  }
-  cancelEditComment() {
-    this.editor.cancelEditComment();
-  }
-  updateNotifies(notifies) {
-    this.list.updateUnread(notifies);
-  }
-  listReload() {
-    this.list.reload();
-  }
-  reload() {
-    this.listReload();
-  }
-  listRefreshUI() {
-    this.list.refreshUI();
-  }
-  editorOpen() {
-    this.editor.open();
-  }
-  editorClose() {
-    this.editor.close();
-  }
-  editorShowLoading() {
-    this.editor.showLoading();
-  }
-  editorHideLoading() {
-    this.editor.hideLoading();
-  }
-  editorShowNotify(msg, type) {
-    this.editor.showNotify(msg, type);
-  }
-  editorTravel($el) {
-    this.editor.travel($el);
-  }
-  editorTravelBack() {
-    this.editor.travelBack();
-  }
-  showSidebar(payload) {
-    this.sidebarLayer.show(payload);
-  }
-  hideSidebar() {
-    this.sidebarLayer.hide();
-  }
-  checkAdmin(payload) {
-    this.checkerLauncher.checkAdmin(payload);
-  }
-  checkCaptcha(payload) {
-    this.checkerLauncher.checkCaptcha(payload);
-  }
-  checkAdminShowEl() {
-    const items = [];
-    this.$root.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-    const { $wrap: $layerWrap } = GetLayerWrap(this);
-    if ($layerWrap)
-      $layerWrap.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-    const $sidebarEl = document.querySelector(".atk-sidebar");
-    if ($sidebarEl)
-      $sidebarEl.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
-    items.forEach(($item) => {
-      if (this.user.data.isAdmin)
-        $item.classList.remove("atk-hide");
-      else
-        $item.classList.add("atk-hide");
-    });
-  }
-  on(name, handler, scope = "internal") {
-    this.eventList.push({ name, handler, scope });
-  }
-  off(name, handler, scope = "internal") {
-    this.eventList = this.eventList.filter((evt) => {
-      if (handler)
-        return !(evt.name === name && evt.handler === handler && evt.scope === scope);
-      return !(evt.name === name && evt.scope === scope);
-    });
-  }
-  trigger(name, payload, scope) {
-    this.eventList.filter((evt) => evt.name === name && (scope ? evt.scope === scope : true)).map((evt) => evt.handler).forEach((handler) => handler(payload));
-  }
-  $t(key, args = {}) {
-    return getI18n(this.conf.locale, key, args);
-  }
-  setDarkMode(darkMode) {
-    const darkModeClassName = "atk-dark-mode";
-    this.conf.darkMode = darkMode;
-    this.trigger("conf-updated");
-    if (this.conf.darkMode)
-      this.$root.classList.add(darkModeClassName);
-    else
-      this.$root.classList.remove(darkModeClassName);
-    const { $wrap: $layerWrap } = GetLayerWrap(this);
-    if ($layerWrap) {
-      if (this.conf.darkMode)
-        $layerWrap.classList.add(darkModeClassName);
-      else
-        $layerWrap.classList.remove(darkModeClassName);
-    }
-  }
-}
-const defaults = {
-  el: "",
-  pageKey: "",
-  pageTitle: "",
-  server: "",
-  site: "",
-  placeholder: "",
-  noComment: "",
-  sendBtn: "",
-  darkMode: false,
-  editorTravel: true,
-  flatMode: "auto",
-  nestMax: 2,
-  nestSort: "DATE_ASC",
-  emoticons: "https://cdn.jsdelivr.net/gh/ArtalkJS/Emoticons/grps/default.json",
-  vote: true,
-  voteDown: false,
-  uaBadge: true,
-  listSort: true,
-  preview: true,
-  countEl: "#ArtalkCount",
-  pvEl: "#ArtalkPV",
-  gravatar: {
-    default: "mp",
-    mirror: "https://sdn.geekzu.org/avatar/"
-  },
-  pagination: {
-    pageSize: 20,
-    readMore: true,
-    autoLoad: true
-  },
-  heightLimit: {
-    content: 300,
-    children: 400
-  },
-  imgUpload: true,
-  reqTimeout: 15e3,
-  versionCheck: true,
-  useBackendConf: false,
-  locale: "zh-CN"
+const ApiComponents = {
+  comment: CommentApi,
+  page: PageApi,
+  site: SiteApi,
+  user: UserApi,
+  system: SystemApi,
+  captcha: CaptchaApi,
+  admin: AdminApi,
+  upload: UploadApi
 };
-{
-  defaults.vote = false;
-  defaults.uaBadge = false;
-  defaults.emoticons = false;
-}
-class Dialog {
-  constructor(ctx, contentEl) {
-    __publicField(this, "ctx");
-    __publicField(this, "$el");
-    __publicField(this, "$content");
-    __publicField(this, "$actions");
-    this.ctx = ctx;
-    this.$el = createElement(`<div class="atk-layer-dialog-wrap">
-        <div class="atk-layer-dialog">
-          <div class="atk-layer-dialog-content"></div>
-          <div class="atk-layer-dialog-actions"></div>
-        </div>
-      </div>`);
-    this.$actions = this.$el.querySelector(".atk-layer-dialog-actions");
-    this.$content = this.$el.querySelector(".atk-layer-dialog-content");
-    this.$content.appendChild(contentEl);
-    return this;
-  }
-  setYes(handler) {
-    const btn = createElement(`<button data-action="confirm">${this.ctx.$t("confirm")}</button>`);
-    btn.onclick = this.onBtnClick(handler);
-    this.$actions.appendChild(btn);
-    return this;
-  }
-  setNo(handler) {
-    const btn = createElement(`<button data-action="cancel">${this.ctx.$t("cancel")}</button>`);
-    btn.onclick = this.onBtnClick(handler);
-    this.$actions.appendChild(btn);
-    return this;
-  }
-  onBtnClick(handler) {
-    return (evt) => {
-      const re = handler(evt.currentTarget, this);
-      if (re === void 0 || re === true) {
-        this.$el.remove();
-      }
-    };
-  }
-}
-const CaptchaChecker = {
-  request(that, ctx, inputVal) {
-    return that.ctx.getApi().captchaCheck(inputVal);
-  },
-  body(that, ctx) {
-    if (that.captchaConf.iframe) {
-      const $iframeWrap = createElement(`<div class="atk-checker-iframe-wrap"></div>`);
-      const $iframe = createElement(`<iframe class="atk-fade-in"></iframe>`);
-      $iframe.style.display = "none";
-      showLoading($iframeWrap, { transparentBg: true });
-      $iframe.src = `${that.ctx.conf.server}/api/captcha/get?t=${+new Date()}`;
-      $iframe.onload = () => {
-        $iframe.style.display = "";
-        hideLoading($iframeWrap);
-      };
-      $iframeWrap.append($iframe);
-      const $closeBtn = createElement(`<div class="atk-close-btn"><i class="atk-icon atk-icon-close"></i></div>`);
-      $iframeWrap.append($closeBtn);
-      ctx.hideInteractInput();
-      let stop = false;
-      const sleep = (ms) => new Promise((resolve) => {
-        window.setTimeout(() => {
-          resolve(null);
-        }, ms);
-      });
-      (function queryStatus() {
-        return __async(this, null, function* () {
-          yield sleep(1e3);
-          if (stop)
-            return;
-          let isPass = false;
-          try {
-            const resp = yield that.ctx.getApi().captchaStatus();
-            isPass = resp.is_pass;
-          } catch (e) {
-            isPass = false;
-          }
-          if (isPass) {
-            ctx.triggerSuccess();
-          } else {
-            queryStatus();
-          }
-        });
-      })();
-      $closeBtn.onclick = () => {
-        stop = true;
-        ctx.cancel();
-      };
-      return $iframeWrap;
-    }
-    const elem = createElement(`<span><img class="atk-captcha-img" src="${that.captchaConf.imgData || ""}">${that.ctx.$t("captchaCheck")}</span>`);
-    elem.querySelector(".atk-captcha-img").onclick = () => {
-      const imgEl = elem.querySelector(".atk-captcha-img");
-      that.ctx.getApi().captchaGet().then((imgData) => {
-        imgEl.setAttribute("src", imgData);
-      }).catch((err) => {
-        console.error("Failed to get captcha image ", err);
-      });
-    };
-    return elem;
-  },
-  onSuccess(that, ctx, data, inputVal, formEl) {
-    that.captchaConf.val = inputVal;
-  },
-  onError(that, ctx, err, inputVal, formEl) {
-    formEl.querySelector(".atk-captcha-img").click();
-  }
-};
-const AdminChecker = {
-  inputType: "password",
-  request(that, ctx, inputVal) {
-    const data = {
-      name: that.ctx.user.data.nick,
-      email: that.ctx.user.data.email,
-      password: inputVal
-    };
-    return that.ctx.getApi().login(data.name, data.email, data.password);
-  },
-  body(that, ctx) {
-    return createElement(`<span>${that.ctx.$t("adminCheck")}</span>`);
-  },
-  onSuccess(that, ctx, userToken, inputVal, formEl) {
-    that.ctx.user.update({
-      isAdmin: true,
-      token: userToken
-    });
-    that.ctx.trigger("user-changed", that.ctx.user.data);
-    that.ctx.listReload();
-  },
-  onError(that, ctx, err, inputVal, formEl) {
-  }
-};
-class CheckerLauncher {
+class Api {
   constructor(ctx) {
     __publicField(this, "ctx");
-    __publicField(this, "launched", []);
-    __publicField(this, "captchaConf", {});
     this.ctx = ctx;
-  }
-  checkCaptcha(payload) {
-    this.captchaConf.imgData = payload.imgData;
-    this.captchaConf.iframe = payload.iframe;
-    this.fire(CaptchaChecker, payload);
-  }
-  checkAdmin(payload) {
-    this.fire(AdminChecker, payload);
-  }
-  fire(checker, payload) {
-    if (this.launched.includes(checker))
-      return;
-    this.launched.push(checker);
-    const layer = new Layer(this.ctx, `checker-${new Date().getTime()}`);
-    layer.setMaskClickHide(false);
-    layer.show();
-    let hideInteractInput = false;
-    const checkerCtx = {
-      getLayer: () => layer,
-      hideInteractInput: () => {
-        hideInteractInput = true;
-      },
-      triggerSuccess: () => {
-        this.close(checker, layer);
-        if (checker.onSuccess)
-          checker.onSuccess(this, checkerCtx, "", "", formEl);
-        if (payload.onSuccess)
-          payload.onSuccess("", dialog.$el);
-      },
-      cancel: () => {
-        this.close(checker, layer);
-        if (payload.onCancel)
-          payload.onCancel();
-      }
-    };
-    const formEl = createElement();
-    formEl.appendChild(checker.body(this, checkerCtx));
-    const $input = createElement(`<input id="check" type="${checker.inputType || "text"}" autocomplete="off" required placeholder="">`);
-    formEl.appendChild($input);
-    setTimeout(() => $input.focus(), 80);
-    $input.onkeyup = (evt) => {
-      if (evt.key === "Enter" || evt.keyCode === 13) {
-        evt.preventDefault();
-        layer.getEl().querySelector('button[data-action="confirm"]').click();
-      }
-    };
-    let btnTextOrg;
-    const dialog = new Dialog(this.ctx, formEl);
-    dialog.setYes((btnEl) => {
-      const inputVal = $input.value.trim();
-      if (!btnTextOrg)
-        btnTextOrg = btnEl.innerText;
-      const btnTextSet = (btnText) => {
-        btnEl.innerText = btnText;
-        btnEl.classList.add("error");
-      };
-      const btnTextRestore = () => {
-        btnEl.innerText = btnTextOrg || "";
-        btnEl.classList.remove("error");
-      };
-      btnEl.innerText = `${this.ctx.$t("loading")}...`;
-      checker.request(this, checkerCtx, inputVal).then((data) => {
-        this.close(checker, layer);
-        if (checker.onSuccess)
-          checker.onSuccess(this, checkerCtx, data, inputVal, formEl);
-        if (payload.onSuccess)
-          payload.onSuccess(inputVal, dialog.$el);
-      }).catch((err) => {
-        btnTextSet(String(err.msg || String(err)));
-        if (checker.onError)
-          checker.onError(this, checkerCtx, err, inputVal, formEl);
-        const tf = setTimeout(() => btnTextRestore(), 3e3);
-        $input.onfocus = () => {
-          btnTextRestore();
-          clearTimeout(tf);
-        };
-      });
-      return false;
+    Object.entries(ApiComponents).forEach(([key, ApiComponent]) => {
+      this[key] = new ApiComponent(this, this.ctx);
     });
-    dialog.setNo(() => {
-      this.close(checker, layer);
-      if (payload.onCancel)
-        payload.onCancel();
-      return false;
-    });
-    if (hideInteractInput) {
-      $input.style.display = "none";
-      dialog.$el.querySelector(".atk-layer-dialog-actions").style.display = "none";
-    }
-    layer.getEl().append(dialog.$el);
-    if (payload.onMount)
-      payload.onMount(dialog.$el);
   }
-  close(checker, layer) {
-    layer.disposeNow();
-    this.launched = this.launched.filter((c) => c !== checker);
+  get baseURL() {
+    return `${this.ctx.conf.server}/api`;
   }
 }
-var editor = "";
-var EditorHTML = '<div class="atk-main-editor">\n  <div class="atk-header">\n    <input name="nick" class="atk-nick" type="text" required="required">\n    <input name="email" class="atk-email" type="email" required="required">\n    <input name="link" class="atk-link" type="url">\n  </div>\n  <div class="atk-textarea-wrap">\n    <textarea class="atk-textarea"></textarea>\n  </div>\n  <div class="atk-plug-panel-wrap" style="display: none;"></div>\n  <div class="atk-bottom">\n    <div class="atk-item atk-plug-btn-wrap"></div>\n    <div class="atk-item">\n      <button type="button" class="atk-send-btn"></button>\n    </div>\n  </div>\n  <div class="atk-notify-wrap"></div>\n</div>\n';
-var emoticonsPlug = "";
-class EditorPlug {
-  constructor(editor2) {
-    __publicField(this, "editor");
-    __publicField(this, "$panel");
-    __publicField(this, "$btn");
-    __publicField(this, "onHeaderInput");
-    this.editor = editor2;
-  }
-  get ctx() {
-    return this.editor.ctx;
-  }
-  registerPanel(html = "<div></div>") {
-    this.$panel = createElement(html);
-    return this.$panel;
-  }
-  registerBtn(html) {
-    this.$btn = createElement(`<span class="atk-plug-btn" data-plug-name="${this.constructor.name}">${html}</span>`);
-    return this.$btn;
-  }
-  registerHeaderInputEvt(action) {
-    this.onHeaderInput = action;
-  }
-  getPanel() {
-    return this.$panel;
-  }
-  getBtn() {
-    return this.$btn;
-  }
-}
-__publicField(EditorPlug, "Name");
-class EmoticonsPlug extends EditorPlug {
-  constructor(editor2) {
-    super(editor2);
-    __publicField(this, "emoticons", []);
-    __publicField(this, "loadingTask", null);
-    __publicField(this, "$grpWrap");
-    __publicField(this, "$grpSwitcher");
-    __publicField(this, "isListLoaded", false);
-    __publicField(this, "isImgLoaded", false);
-    this.editor = editor2;
-    this.registerPanel(`<div class="atk-editor-plug-emoticons"></div>`);
-    this.registerBtn(this.ctx.$t("emoticon"));
-    window.setTimeout(() => {
-      this.loadEmoticonsData();
-    }, 1e3);
-  }
-  onPanelShow() {
-    (() => __async(this, null, function* () {
-      yield this.loadEmoticonsData();
-      if (!this.isImgLoaded) {
-        this.initEmoticonsList();
-        this.isImgLoaded = true;
-      }
-      setTimeout(() => {
-        this.changeListHeight();
-      }, 30);
-    }))();
-  }
-  onPanelHide() {
-    this.$panel.parentElement.style.height = "";
-  }
-  loadEmoticonsData() {
-    return __async(this, null, function* () {
-      if (this.isListLoaded)
-        return;
-      if (this.loadingTask !== null) {
-        yield this.loadingTask;
-        return;
-      }
-      this.loadingTask = (() => __async(this, null, function* () {
-        showLoading(this.$panel);
-        this.emoticons = yield this.handleData(this.ctx.conf.emoticons);
-        hideLoading(this.$panel);
-        this.loadingTask = null;
-        this.isListLoaded = true;
-      }))();
-      yield this.loadingTask;
-    });
-  }
-  handleData(data) {
-    return __async(this, null, function* () {
-      if (!Array.isArray(data) && ["object", "string"].includes(typeof data)) {
-        data = [data];
-      }
-      if (!Array.isArray(data)) {
-        setError(this.$panel, "\u8868\u60C5\u5305\u6570\u636E\u5FC5\u987B\u4E3A Array/Object/String \u7C7B\u578B");
-        hideLoading(this.$panel);
-        return [];
-      }
-      const pushGrp = (grp) => {
-        if (typeof grp !== "object")
-          return;
-        if (grp.name && data.find((o) => o.name === grp.name))
-          return;
-        data.push(grp);
-      };
-      const remoteLoad = (d) => __async(this, null, function* () {
-        yield Promise.all(d.map((grp, index) => __async(this, null, function* () {
-          if (typeof grp === "object" && !Array.isArray(grp)) {
-            pushGrp(grp);
-          } else if (Array.isArray(grp)) {
-            yield remoteLoad(grp);
-          } else if (typeof grp === "string") {
-            const grpData = yield this.remoteLoad(grp);
-            if (Array.isArray(grpData))
-              yield remoteLoad(grpData);
-            else if (typeof grpData === "object")
-              pushGrp(grpData);
-          }
-        })));
-      });
-      yield remoteLoad(data);
-      data.forEach((item) => {
-        if (this.isOwOFormat(item)) {
-          const c = this.convertOwO(item);
-          c.forEach((grp) => {
-            pushGrp(grp);
-          });
-        } else if (Array.isArray(item)) {
-          item.forEach((grp) => {
-            pushGrp(grp);
-          });
-        }
-      });
-      data = data.filter((item) => typeof item === "object" && !Array.isArray(item) && !!item && !!item.name);
-      this.solveNullKey(data);
-      this.solveSameKey(data);
-      return data;
-    });
-  }
-  remoteLoad(url) {
-    return __async(this, null, function* () {
-      if (!url)
-        return [];
-      try {
-        const resp = yield fetch(url);
-        const json = yield resp.json();
-        return json;
-      } catch (err) {
-        hideLoading(this.$panel);
-        setError(this.$panel, `\u8868\u60C5\u52A0\u8F7D\u5931\u8D25 ${String(err)}`);
-        return [];
-      }
-    });
-  }
-  solveNullKey(data) {
-    data.forEach((grp) => {
-      grp.items.forEach((item, index) => {
-        if (!item.key)
-          item.key = `${grp.name} ${index + 1}`;
-      });
-    });
-  }
-  solveSameKey(data) {
-    const tmp = {};
-    data.forEach((grp) => {
-      grp.items.forEach((item) => {
-        if (!item.key || String(item.key).trim() === "")
-          return;
-        if (!tmp[item.key])
-          tmp[item.key] = 1;
-        else
-          tmp[item.key]++;
-        if (tmp[item.key] > 1)
-          item.key = `${item.key} ${tmp[item.key]}`;
-      });
-    });
-  }
-  isOwOFormat(data) {
-    try {
-      return typeof data === "object" && !!Object.values(data).length && Array.isArray(Object.keys(Object.values(data)[0].container)) && Object.keys(Object.values(data)[0].container[0]).includes("icon");
-    } catch (e) {
-      return false;
-    }
-  }
-  convertOwO(owoData) {
-    const dest = [];
-    Object.entries(owoData).forEach(([grpName, grp]) => {
-      const nGrp = { name: grpName, type: grp.type, items: [] };
-      grp.container.forEach((item, index) => {
-        const iconStr = item.icon;
-        if (/<(img|IMG)/.test(iconStr)) {
-          const find = /src=["'](.*?)["']/.exec(iconStr);
-          if (find && find.length > 1)
-            item.icon = find[1];
-        }
-        nGrp.items.push({ key: item.text || `${grpName} ${index + 1}`, val: item.icon });
-      });
-      dest.push(nGrp);
-    });
-    return dest;
-  }
-  initEmoticonsList() {
-    this.$grpWrap = createElement(`<div class="atk-grp-wrap"></div>`);
-    this.$panel.append(this.$grpWrap);
-    this.emoticons.forEach((grp, index) => {
-      const $grp = createElement(`<div class="atk-grp" style="display: none;"></div>`);
-      this.$grpWrap.append($grp);
-      $grp.setAttribute("data-index", String(index));
-      $grp.setAttribute("data-grp-name", grp.name);
-      $grp.setAttribute("data-type", grp.type);
-      grp.items.forEach((item) => {
-        const $item = createElement(`<span class="atk-item"></span>`);
-        $grp.append($item);
-        if (!!item.key && !new RegExp(`^(${grp.name})?\\s?[0-9]+$`).test(item.key))
-          $item.setAttribute("title", item.key);
-        if (grp.type === "image") {
-          const imgEl = document.createElement("img");
-          imgEl.src = item.val;
-          imgEl.alt = item.key;
-          $item.append(imgEl);
-        } else {
-          $item.innerText = item.val;
-        }
-        $item.onclick = () => {
-          if (grp.type === "image") {
-            this.editor.insertContent(`:[${item.key}]`);
-          } else {
-            this.editor.insertContent(item.val || "");
-          }
-        };
-      });
-    });
-    if (this.emoticons.length > 1) {
-      this.$grpSwitcher = createElement(`<div class="atk-grp-switcher"></div>`);
-      this.$panel.append(this.$grpSwitcher);
-      this.emoticons.forEach((grp, index) => {
-        const $item = createElement("<span />");
-        $item.innerText = grp.name;
-        $item.setAttribute("data-index", String(index));
-        $item.onclick = () => this.openGrp(index);
-        this.$grpSwitcher.append($item);
-      });
-    }
-    if (this.emoticons.length > 0)
-      this.openGrp(0);
-  }
-  openGrp(index) {
-    var _a, _b, _c;
-    Array.from(this.$grpWrap.children).forEach((item) => {
-      const el = item;
-      if (el.getAttribute("data-index") !== String(index)) {
-        el.style.display = "none";
-      } else {
-        el.style.display = "";
-      }
-    });
-    (_a = this.$grpSwitcher) == null ? void 0 : _a.querySelectorAll("span.active").forEach((item) => item.classList.remove("active"));
-    (_c = (_b = this.$grpSwitcher) == null ? void 0 : _b.querySelector(`span[data-index="${index}"]`)) == null ? void 0 : _c.classList.add("active");
-    this.changeListHeight();
-  }
-  changeListHeight() {
-  }
-  transEmoticonImageText(text) {
-    if (!this.emoticons || !Array.isArray(this.emoticons))
-      return text;
-    this.emoticons.forEach((grp) => {
-      if (grp.type !== "image")
-        return;
-      Object.entries(grp.items).forEach(([index, item]) => {
-        text = text.split(`:[${item.key}]`).join(`<img src="${item.val}" atk-emoticon="${item.key}">`);
-      });
-    });
-    return text;
-  }
-}
-__publicField(EmoticonsPlug, "Name", "emoticons");
-class UploadPlug extends EditorPlug {
-  constructor(editor2) {
-    super(editor2);
-    __publicField(this, "$imgUploadInput");
-    __publicField(this, "allowImgExts", ["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp"]);
-    this.$imgUploadInput = document.createElement("input");
-    this.$imgUploadInput.type = "file";
-    this.$imgUploadInput.style.display = "none";
-    this.$imgUploadInput.accept = this.allowImgExts.map((o) => `.${o}`).join(",");
-    const $btn = this.registerBtn(`${this.ctx.$t("image")}`);
-    $btn.after(this.$imgUploadInput);
-    $btn.onclick = () => {
-      const $input = this.$imgUploadInput;
-      $input.onchange = () => {
-        (() => __async(this, null, function* () {
-          if (!$input.files || $input.files.length === 0)
-            return;
-          const file = $input.files[0];
-          this.uploadImg(file);
-        }))();
-      };
-      $input.click();
-    };
-    this.ctx.on("conf-updated", () => {
-      if (!this.ctx.conf.imgUpload) {
-        this.getBtn().setAttribute("atk-only-admin-show", "");
-        this.ctx.checkAdminShowEl();
-      }
-    });
-    const uploadFromFileList = (files) => {
-      if (!files)
-        return;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        this.uploadImg(file);
-      }
-    };
-    this.editor.$textarea.addEventListener("dragover", (evt) => {
-      evt.stopPropagation();
-      evt.preventDefault();
-    });
-    this.editor.$textarea.addEventListener("drop", (evt) => {
-      var _a;
-      const files = (_a = evt.dataTransfer) == null ? void 0 : _a.files;
-      if (files == null ? void 0 : files.length) {
-        evt.preventDefault();
-        uploadFromFileList(files);
-      }
-    });
-    this.editor.$textarea.addEventListener("paste", (evt) => {
-      var _a;
-      const files = (_a = evt.clipboardData) == null ? void 0 : _a.files;
-      if (files == null ? void 0 : files.length) {
-        evt.preventDefault();
-        uploadFromFileList(files);
-      }
-    });
-  }
-  uploadImg(file) {
-    return __async(this, null, function* () {
-      const fileExt = /[^.]+$/.exec(file.name);
-      if (!fileExt || !this.allowImgExts.includes(fileExt[0]))
-        return;
-      if (!this.ctx.user.checkHasBasicUserInfo()) {
-        this.editor.showNotify(this.ctx.$t("uploadLoginMsg"), "w");
-        return;
-      }
-      let insertPrefix = "\n";
-      if (this.editor.$textarea.value.trim() === "")
-        insertPrefix = "";
-      const uploadPlaceholderTxt = `${insertPrefix}![](Uploading ${file.name}...)`;
-      this.editor.insertContent(uploadPlaceholderTxt);
-      let resp;
-      try {
-        if (!this.ctx.conf.imgUploader) {
-          resp = yield this.ctx.getApi().imgUpload(file);
-        } else {
-          resp = { img_url: yield this.ctx.conf.imgUploader(file) };
-        }
-      } catch (err) {
-        console.error(err);
-        this.editor.showNotify(`${this.ctx.$t("uploadFail")}\uFF0C${err.msg}`, "e");
-      }
-      if (!!resp && resp.img_url) {
-        let imgURL = resp.img_url;
-        if (!isValidURL(imgURL))
-          imgURL = getURLBasedOnApi(this.ctx, imgURL);
-        this.editor.setContent(this.editor.$textarea.value.replace(uploadPlaceholderTxt, `${insertPrefix}![](${imgURL})`));
-      } else {
-        this.editor.setContent(this.editor.$textarea.value.replace(uploadPlaceholderTxt, ""));
-      }
-    });
-  }
-}
-__publicField(UploadPlug, "Name", "upload");
-var previewPlug = "";
-class PreviewPlug extends EditorPlug {
-  constructor(editor2) {
-    super(editor2);
-    __publicField(this, "isBind", false);
-    this.registerPanel(`<div class="atk-editor-plug-preview"></div>`);
-    let btnText = this.editor.$t("preview");
-    if (this.ctx.markedInstance)
-      btnText += ` <i title="Markdown is supported"><svg class="markdown" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3zM9 11H7V8L5.5 9.92 4 8v3H2V5h2l1.5 2L7 5h2v6zm2.99.5L9.5 8H11V5h2v3h1.5l-2.51 3.5z"></path></svg></i>`;
-    this.registerBtn(btnText);
-  }
-  onPanelShow() {
-    this.updateContent();
-    if (!this.isBind) {
-      const event = () => {
-        this.updateContent();
-      };
-      this.editor.$textarea.addEventListener("input", event);
-      this.editor.$textarea.addEventListener("change", event);
-      this.isBind = true;
-    }
-  }
-  updateContent() {
-    if (this.$panel.style.display !== "none") {
-      this.$panel.innerHTML = this.editor.getContentMarked();
-    }
-  }
-}
-__publicField(PreviewPlug, "Name", "preview");
-class HeaderInputPlug extends EditorPlug {
-  constructor(editor2) {
-    super(editor2);
-    __publicField(this, "queryUserInfo", {
-      timeout: null,
-      abortFunc: null
-    });
-    this.registerHeaderInputEvt((key, $input) => {
-      if (key === "nick" || key === "email") {
-        this.fetchUserInfo();
-      }
-    });
-    this.editor.$link.addEventListener("change", () => {
-      const link = this.editor.$link.value.trim();
-      if (!!link && !/^(http|https):\/\//.test(link)) {
-        this.editor.$link.value = `https://${link}`;
-        this.ctx.user.update({ link: this.editor.$link.value });
-      }
-    });
-  }
-  fetchUserInfo() {
-    this.ctx.user.logout();
-    if (this.queryUserInfo.timeout)
-      window.clearTimeout(this.queryUserInfo.timeout);
-    if (this.queryUserInfo.abortFunc)
-      this.queryUserInfo.abortFunc();
-    this.queryUserInfo.timeout = window.setTimeout(() => {
-      this.queryUserInfo.timeout = null;
-      const { req, abort } = this.ctx.getApi().userGet(this.ctx.user.data.nick, this.ctx.user.data.email);
-      this.queryUserInfo.abortFunc = abort;
-      req.then((data) => {
-        var _a;
-        if (!data.is_login) {
-          this.ctx.user.logout();
-        }
-        this.ctx.updateNotifies(data.unread);
-        if (this.ctx.user.checkHasBasicUserInfo() && !data.is_login && ((_a = data.user) == null ? void 0 : _a.is_admin)) {
-          this.showLoginDialog();
-        }
-        if (data.user && data.user.link) {
-          this.editor.$link.value = data.user.link;
-          this.ctx.user.update({ link: data.user.link });
-        }
-      }).catch(() => {
-      }).finally(() => {
-        this.queryUserInfo.abortFunc = null;
-      });
-    }, 400);
-  }
-  showLoginDialog() {
-    this.ctx.checkAdmin({
-      onSuccess: () => {
-      }
-    });
-  }
-}
-__publicField(HeaderInputPlug, "Name", "headerInput");
-class Editor extends Component {
-  constructor(ctx) {
-    super(ctx);
-    __publicField(this, "$header");
-    __publicField(this, "$nick");
-    __publicField(this, "$email");
-    __publicField(this, "$link");
-    __publicField(this, "$textareaWrap");
-    __publicField(this, "$textarea");
-    __publicField(this, "$bottom");
-    __publicField(this, "$submitBtn");
-    __publicField(this, "$notifyWrap");
-    __publicField(this, "isTraveling", false);
-    __publicField(this, "replyComment", null);
-    __publicField(this, "$sendReply", null);
-    __publicField(this, "editComment", null);
-    __publicField(this, "$editCancelBtn", null);
-    __publicField(this, "ENABLED_PLUGS", [EmoticonsPlug, UploadPlug, PreviewPlug, HeaderInputPlug]);
-    __publicField(this, "plugList", {});
-    __publicField(this, "openedPlugName", null);
-    __publicField(this, "$plugPanelWrap");
-    __publicField(this, "$plugBtnWrap");
-    this.$el = createElement(EditorHTML);
-    this.$header = this.$el.querySelector(".atk-header");
-    this.$nick = this.$header.querySelector('[name="nick"]');
-    this.$email = this.$header.querySelector('[name="email"]');
-    this.$link = this.$header.querySelector('[name="link"]');
-    this.$textareaWrap = this.$el.querySelector(".atk-textarea-wrap");
-    this.$textarea = this.$el.querySelector(".atk-textarea");
-    this.$bottom = this.$el.querySelector(".atk-bottom");
-    this.$submitBtn = this.$el.querySelector(".atk-send-btn");
-    this.$notifyWrap = this.$el.querySelector(".atk-notify-wrap");
-    this.$plugBtnWrap = this.$el.querySelector(".atk-plug-btn-wrap");
-    this.$plugPanelWrap = this.$el.querySelector(".atk-plug-panel-wrap");
-    this.initLocalStorage();
-    this.initHeader();
-    this.initTextarea();
-    this.initPlugs();
-    this.initSubmitBtn();
-    this.ctx.on("conf-updated", () => {
-    });
-  }
-  get user() {
-    return this.ctx.user;
-  }
-  get $inputs() {
-    return { nick: this.$nick, email: this.$email, link: this.$link };
-  }
-  get isReplyMode() {
-    return this.replyComment !== null;
-  }
-  get isEditMode() {
-    return this.editComment !== null;
-  }
-  initLocalStorage() {
-    const localContent = window.localStorage.getItem("ArtalkContent") || "";
-    if (localContent.trim() !== "") {
-      this.showNotify(this.$t("restoredMsg"), "i");
-      this.setContent(localContent);
-    }
-    this.$textarea.addEventListener("input", () => this.saveToLocalStorage());
-  }
-  saveToLocalStorage() {
-    window.localStorage.setItem("ArtalkContent", this.getContentOriginal().trim());
-  }
-  initHeader() {
-    Object.entries(this.$inputs).forEach(([key, $input]) => {
-      $input.value = this.user.data[key] || "";
-      $input.addEventListener("input", () => this.onHeaderInput(key, $input));
-      $input.placeholder = `${this.$t(key)}`;
-    });
-  }
-  onHeaderInput(key, $input) {
-    if (this.isEditMode)
-      return;
-    this.user.update({
-      [key]: $input.value.trim()
-    });
-    Object.entries(this.plugList).forEach(([plugName, plug]) => {
-      if (plug.onHeaderInput)
-        plug.onHeaderInput(key, $input);
-    });
-  }
-  initTextarea() {
-    this.$textarea.placeholder = this.ctx.conf.placeholder || this.$t("placeholder");
-    this.$textarea.addEventListener("keydown", (e) => {
-      const keyCode = e.keyCode || e.which;
-      if (keyCode === 9) {
-        e.preventDefault();
-        this.insertContent("	");
-      }
-    });
-    this.$textarea.addEventListener("input", () => {
-      this.adjustTextareaHeight();
-    });
-  }
-  refreshSendBtnText() {
-    if (this.isEditMode)
-      this.$submitBtn.innerText = this.$t("save");
-    else
-      this.$submitBtn.innerText = this.ctx.conf.sendBtn || this.$t("send");
-  }
-  initSubmitBtn() {
-    this.refreshSendBtnText();
-    this.$submitBtn.addEventListener("click", () => this.submit());
-  }
-  getFinalContent() {
-    let content = this.getContentOriginal();
-    if (this.plugList.emoticons) {
-      content = this.plugList.emoticons.transEmoticonImageText(content);
-    }
-    return content;
-  }
-  getContentOriginal() {
-    return this.$textarea.value || "";
-  }
-  getContentMarked() {
-    return marked(this.ctx, this.getFinalContent());
-  }
-  setContent(val) {
-    this.$textarea.value = val;
-    this.saveToLocalStorage();
-    if (this.plugList.preview) {
-      this.plugList.preview.updateContent();
-    }
-    window.setTimeout(() => {
-      this.adjustTextareaHeight();
-    }, 80);
-  }
-  insertContent(val) {
-    if (document.selection) {
-      this.$textarea.focus();
-      document.selection.createRange().text = val;
-      this.$textarea.focus();
-    } else if (this.$textarea.selectionStart || this.$textarea.selectionStart === 0) {
-      const sStart = this.$textarea.selectionStart;
-      const sEnd = this.$textarea.selectionEnd;
-      const sT = this.$textarea.scrollTop;
-      this.setContent(this.$textarea.value.substring(0, sStart) + val + this.$textarea.value.substring(sEnd, this.$textarea.value.length));
-      this.$textarea.focus();
-      this.$textarea.selectionStart = sStart + val.length;
-      this.$textarea.selectionEnd = sStart + val.length;
-      this.$textarea.scrollTop = sT;
-    } else {
-      this.$textarea.focus();
-      this.$textarea.value += val;
-    }
-  }
-  adjustTextareaHeight() {
-    const diff = this.$textarea.offsetHeight - this.$textarea.clientHeight;
-    this.$textarea.style.height = "0px";
-    this.$textarea.style.height = `${this.$textarea.scrollHeight + diff}px`;
-  }
-  setReply(commentData, $comment, scroll = true) {
-    if (this.isEditMode)
-      this.cancelEditComment();
-    if (this.isReplyMode)
-      this.cancelReply();
-    if (this.$sendReply === null) {
-      this.$sendReply = createElement(`<div class="atk-send-reply">${this.$t("reply")} <span class="atk-text"></span><span class="atk-cancel">\xD7</span></div>`);
-      this.$sendReply.querySelector(".atk-text").innerText = `@${commentData.nick}`;
-      this.$sendReply.addEventListener("click", () => {
-        this.cancelReply();
-      });
-      this.$textareaWrap.append(this.$sendReply);
-    }
-    this.replyComment = commentData;
-    if (this.ctx.conf.editorTravel === true) {
-      this.travel($comment);
-    }
-    if (scroll)
-      scrollIntoView(this.$el);
-    this.$textarea.focus();
-  }
-  cancelReply() {
-    if (this.$sendReply !== null) {
-      this.$sendReply.remove();
-      this.$sendReply = null;
-    }
-    this.replyComment = null;
-    if (this.ctx.conf.editorTravel === true) {
-      this.travelBack();
-    }
-  }
-  setEditComment(commentData, $comment) {
-    if (this.isEditMode)
-      this.cancelEditComment();
-    if (this.isReplyMode)
-      this.cancelReply();
-    if (this.$editCancelBtn === null) {
-      this.$editCancelBtn = createElement(`<div class="atk-send-reply">${this.$t("editCancel")}<span class="atk-cancel">\xD7</span></div>`);
-      this.$editCancelBtn.onclick = () => {
-        this.cancelEditComment();
-      };
-      this.$textareaWrap.append(this.$editCancelBtn);
-    }
-    this.editComment = commentData;
-    this.$header.style.display = "none";
-    this.travel($comment);
-    this.$nick.value = commentData.nick;
-    this.$email.value = commentData.email || "";
-    this.$link.value = commentData.link;
-    this.setContent(commentData.content);
-    this.$textarea.focus();
-    this.refreshSendBtnText();
-  }
-  cancelEditComment() {
-    if (this.$editCancelBtn !== null) {
-      this.$editCancelBtn.remove();
-      this.$editCancelBtn = null;
-    }
-    this.editComment = null;
-    this.travelBack();
-    this.$nick.value = this.user.data.nick;
-    this.$email.value = this.user.data.email;
-    this.$link.value = this.user.data.link;
-    this.setContent("");
-    this.refreshSendBtnText();
-    this.$header.style.display = "";
-  }
-  showNotify(msg, type) {
-    showNotify(this.$notifyWrap, msg, type);
-  }
-  showLoading() {
-    showLoading(this.$el);
-  }
-  hideLoading() {
-    hideLoading(this.$el);
-  }
-  submit() {
-    return __async(this, null, function* () {
-      if (this.getFinalContent().trim() === "") {
-        this.$textarea.focus();
-        return;
-      }
-      this.ctx.trigger("editor-submit");
-      this.showLoading();
-      if (!this.isEditMode) {
-        yield this.submitAdd();
-      } else {
-        yield this.submitEdit();
-      }
-      this.hideLoading();
-    });
-  }
-  submitAdd() {
-    return __async(this, null, function* () {
-      try {
-        const nComment = yield this.ctx.getApi().add({
-          content: this.getFinalContent(),
-          nick: this.user.data.nick,
-          email: this.user.data.email,
-          link: this.user.data.link,
-          rid: this.replyComment === null ? 0 : this.replyComment.id,
-          page_key: this.replyComment === null ? this.ctx.conf.pageKey : this.replyComment.page_key,
-          page_title: this.replyComment === null ? this.ctx.conf.pageTitle : void 0,
-          site_name: this.replyComment === null ? this.ctx.conf.site : this.replyComment.site_name
-        });
-        if (this.replyComment !== null && this.replyComment.page_key !== this.ctx.conf.pageKey) {
-          window.open(`${this.replyComment.page_url}#atk-comment-${nComment.id}`);
-        }
-        this.ctx.insertComment(nComment);
-        this.setContent("");
-        this.cancelReply();
-        this.ctx.trigger("editor-submitted");
-      } catch (err) {
-        console.error(err);
-        this.showNotify(`${this.$t("commentFail")}\uFF0C${err.msg || String(err)}`, "e");
-      }
-    });
-  }
-  submitEdit() {
-    return __async(this, null, function* () {
-      try {
-        const saveData = {
-          content: this.getFinalContent(),
-          nick: this.$nick.value,
-          email: this.$email.value,
-          link: this.$link.value
-        };
-        const nComment = yield this.ctx.getApi().commentEdit(__spreadValues(__spreadValues({}, this.editComment), saveData));
-        this.ctx.updateComment(nComment);
-        this.setContent("");
-        this.cancelEditComment();
-        this.ctx.trigger("editor-submitted");
-      } catch (err) {
-        console.error(err);
-        this.showNotify(`${this.$t("commentFail")}\uFF0C${err.msg || String(err)}`, "e");
-      }
-    });
-  }
-  close() {
-    if (!this.$textareaWrap.querySelector(".atk-comment-closed"))
-      this.$textareaWrap.prepend(createElement(`<div class="atk-comment-closed">${this.$t("onlyAdminCanReply")}</div>`));
-    if (!this.user.data.isAdmin) {
-      this.$textarea.style.display = "none";
-      this.closePlugPanel();
-      this.$bottom.style.display = "none";
-    } else {
-      this.$textarea.style.display = "";
-      this.$bottom.style.display = "";
-    }
-  }
-  open() {
-    var _a;
-    (_a = this.$textareaWrap.querySelector(".atk-comment-closed")) == null ? void 0 : _a.remove();
-    this.$textarea.style.display = "";
-    this.$bottom.style.display = "";
-  }
-  travel($afterEl) {
-    if (this.isTraveling)
-      return;
-    this.isTraveling = true;
-    this.$el.after(createElement('<div class="atk-editor-travel-placeholder"></div>'));
-    const $travelPlace = createElement("<div></div>");
-    $afterEl.after($travelPlace);
-    $travelPlace.replaceWith(this.$el);
-    this.$el.classList.add("atk-fade-in");
-  }
-  travelBack() {
-    var _a;
-    if (!this.isTraveling)
-      return;
-    this.isTraveling = false;
-    (_a = this.ctx.$root.querySelector(".atk-editor-travel-placeholder")) == null ? void 0 : _a.replaceWith(this.$el);
-    if (this.replyComment !== null)
-      this.cancelReply();
-  }
-  initPlugs() {
-    this.plugList = {};
-    this.$plugPanelWrap.innerHTML = "";
-    this.$plugPanelWrap.style.display = "none";
-    this.openedPlugName = null;
-    this.$plugBtnWrap.innerHTML = "";
-    const disabledPlugs = [];
-    if (!this.conf.emoticons)
-      disabledPlugs.push("emoticons");
-    if (!this.conf.preview)
-      disabledPlugs.push("preview");
-    this.ENABLED_PLUGS.forEach((Plug) => {
-      const plugName = Plug.Name;
-      if (disabledPlugs.includes(plugName))
-        return;
-      const plug = new Plug(this);
-      this.plugList[plugName] = plug;
-      const $btn = plug.getBtn();
-      if ($btn) {
-        this.$plugBtnWrap.appendChild($btn);
-        $btn.onclick = $btn.onclick || (() => {
-          this.$plugBtnWrap.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
-          if (plugName === this.openedPlugName) {
-            this.closePlugPanel();
-            return;
-          }
-          this.openPlugPanel(plugName);
-          $btn.classList.add("active");
-        });
-        const $panel = plug.getPanel();
-        if ($panel) {
-          $panel.setAttribute("data-plug-name", plugName);
-          $panel.style.display = "none";
-          this.$plugPanelWrap.appendChild($panel);
-        }
-      }
-    });
-  }
-  openPlugPanel(plugName) {
-    Object.entries(this.plugList).forEach(([aPlugName, plug]) => {
-      const plugPanel = plug.getPanel();
-      if (!plugPanel)
-        return;
-      if (aPlugName === plugName) {
-        plugPanel.style.display = "";
-        if (plug.onPanelShow)
-          plug.onPanelShow();
-      } else {
-        plugPanel.style.display = "none";
-        if (plug.onPanelHide)
-          plug.onPanelHide();
-      }
-    });
-    this.$plugPanelWrap.style.display = "";
-    this.openedPlugName = plugName;
-  }
-  closePlugPanel() {
-    if (!this.openedPlugName)
-      return;
-    const plug = this.plugList[this.openedPlugName];
-    if (!plug)
-      return;
-    if (plug.onPanelHide)
-      plug.onPanelHide();
-    this.$plugPanelWrap.style.display = "none";
-    this.openedPlugName = null;
-  }
-}
-var list = "";
-var ListHTML = '<div class="atk-list">\n  <div class="atk-list-header">\n    <div class="atk-comment-count">\n      <div class="atk-text"></div>\n    </div>\n    <div class="atk-right-action">\n      <span data-action="admin-close-comment" class="atk-hide" atk-only-admin-show></span>\n      <span data-action="open-sidebar" class="atk-hide atk-on">\n        <span class="atk-unread-badge" style="display: none;"></span>\n        <div class="atk-text"></div>\n      </span>\n    </div>\n  </div>\n  <div class="atk-list-body"></div>\n  <div class="atk-list-footer">\n    <div class="atk-copyright"></div>\n  </div>\n</div>\n';
+const version = "2.4.3";
+const backendMinVersion = "2.3.0";
+const ListHTML = '<div class="atk-list">\n  <div class="atk-list-header">\n    <div class="atk-comment-count">\n      <div class="atk-text"></div>\n    </div>\n    <div class="atk-right-action">\n      <span data-action="admin-close-comment" class="atk-hide" atk-only-admin-show></span>\n      <span data-action="open-sidebar" class="atk-hide atk-on">\n        <span class="atk-unread-badge" style="display: none;"></span>\n        <div class="atk-text"></div>\n      </span>\n    </div>\n  </div>\n  <div class="atk-list-body"></div>\n  <div class="atk-list-footer">\n    <div class="atk-copyright"></div>\n  </div>\n</div>\n';
 const win = window || {};
 const nav = navigator || {};
 function Detect(userAgent) {
@@ -3437,7 +2268,7 @@ function Detect(userAgent) {
       dest.osVersion = "";
     }
   }
-  const version = {
+  const version2 = {
     Safari: () => u.replace(/^.*Version\/([\d.]+).*$/, "$1"),
     Chrome: () => u.replace(/^.*Chrome\/([\d.]+).*$/, "$1").replace(/^.*CriOS\/([\d.]+).*$/, "$1"),
     IE: () => u.replace(/^.*MSIE ([\d.]+).*$/, "$1").replace(/^.*rv:([\d.]+).*$/, "$1"),
@@ -3469,8 +2300,8 @@ function Detect(userAgent) {
     iQiYi: () => u.replace(/^.*IqiyiVersion\/([\d.]+).*$/, "$1")
   };
   dest.version = "";
-  if (version[dest.browser]) {
-    dest.version = version[dest.browser]();
+  if (version2[dest.browser]) {
+    dest.version = version2[dest.browser]();
     if (dest.version === u) {
       dest.version = "";
     }
@@ -3495,7 +2326,6 @@ function Detect(userAgent) {
   }
   return dest;
 }
-var comment = "";
 class ActionBtn {
   constructor(ctx, conf) {
     __publicField(this, "ctx");
@@ -3614,9 +2444,9 @@ class ActionBtn {
     this.msgRecTimerFunc = void 0;
   }
 }
-var CommentHTML = '<div class="atk-comment-wrap">\n  <div class="atk-comment">\n    <div class="atk-avatar"></div>\n    <div class="atk-main">\n      <div class="atk-header">\n        <span class="atk-item atk-nick"></span>\n        <span class="atk-badge-wrap"></span>\n        <span class="atk-item atk-date"></span>\n      </div>\n      <div class="atk-body">\n        <div class="atk-content"></div>\n      </div>\n      <div class="atk-footer">\n        <div class="atk-actions"></div>\n      </div>\n    </div>\n  </div>\n</div>\n';
+const CommentHTML = '<div class="atk-comment-wrap">\n  <div class="atk-comment">\n    <div class="atk-avatar"></div>\n    <div class="atk-main">\n      <div class="atk-header">\n        <span class="atk-item atk-nick"></span>\n        <span class="atk-badge-wrap"></span>\n        <span class="atk-item atk-date"></span>\n      </div>\n      <div class="atk-body">\n        <div class="atk-content"></div>\n      </div>\n      <div class="atk-footer">\n        <div class="atk-actions"></div>\n      </div>\n    </div>\n  </div>\n</div>\n';
 class CommentRender {
-  constructor(comment2) {
+  constructor(comment) {
     __publicField(this, "comment");
     __publicField(this, "$el");
     __publicField(this, "$main");
@@ -3631,7 +2461,7 @@ class CommentRender {
     __publicField(this, "voteBtnDown");
     __publicField(this, "$replyTo");
     __publicField(this, "$replyAt");
-    this.comment = comment2;
+    this.comment = comment;
   }
   get ctx() {
     return this.comment.ctx;
@@ -3663,7 +2493,8 @@ class CommentRender {
   renderAvatar() {
     const $avatar = this.$el.querySelector(".atk-avatar");
     const $avatarImg = createElement("<img />");
-    $avatarImg.src = this.comment.getGravatarURL();
+    const avatarURLBuilder = this.ctx.conf.avatarURLBuilder;
+    $avatarImg.src = avatarURLBuilder ? avatarURLBuilder(this.data) : this.comment.getGravatarURL();
     if (this.data.link) {
       const $avatarA = createElement('<a target="_blank" rel="noreferrer noopener nofollow"></a>');
       $avatarA.href = isValidURL(this.data.link) ? this.data.link : `https://${this.data.link}`;
@@ -4009,9 +2840,9 @@ class CommentRender {
   }
 }
 class CommentActions {
-  constructor(comment2) {
+  constructor(comment) {
     __publicField(this, "comment");
-    this.comment = comment2;
+    this.comment = comment;
   }
   get ctx() {
     return this.comment.ctx;
@@ -4024,7 +2855,7 @@ class CommentActions {
   }
   vote(type) {
     const actionBtn = type === "up" ? this.comment.getRender().voteBtnUp : this.comment.getRender().voteBtnDown;
-    this.ctx.getApi().vote(this.data.id, `comment_${type}`).then((v) => {
+    this.ctx.getApi().comment.vote(this.data.id, `comment_${type}`).then((v) => {
       var _a, _b;
       this.data.vote_up = v.up;
       this.data.vote_down = v.down;
@@ -4047,7 +2878,7 @@ class CommentActions {
     } else if (type === "pinned") {
       modify.is_pinned = !modify.is_pinned;
     }
-    this.ctx.getApi().commentEdit(modify).then((data) => {
+    this.ctx.getApi().comment.commentEdit(modify).then((data) => {
       btnElem.setLoading(false);
       this.comment.setData(data);
       this.ctx.listRefreshUI();
@@ -4060,7 +2891,7 @@ class CommentActions {
     if (btnElem.isLoading)
       return;
     btnElem.setLoading(true, `${this.ctx.$t("deleting")}...`);
-    this.ctx.getApi().commentDel(this.data.id, this.data.site_name).then(() => {
+    this.ctx.getApi().comment.commentDel(this.data.id, this.data.site_name).then(() => {
       btnElem.setLoading(false);
       if (this.cConf.onDelete)
         this.cConf.onDelete(this.comment);
@@ -4191,7 +3022,6 @@ class Comment extends Component {
     return this.cConf;
   }
 }
-var pagination = "";
 class Pagination {
   constructor(total, conf) {
     __publicField(this, "conf");
@@ -4204,13 +3034,15 @@ class Pagination {
     __publicField(this, "page", 1);
     this.total = total;
     this.conf = conf;
-    this.$el = createElement(`<div class="atk-pagination-wrap">
+    this.$el = createElement(
+      `<div class="atk-pagination-wrap">
         <div class="atk-pagination">
           <div class="atk-btn atk-btn-prev">Prev</div>
           <input type="text" class="atk-input" aria-label="Enter the number of page" />
           <div class="atk-btn atk-btn-next">Next</div>
         </div>
-      </div>`);
+      </div>`
+    );
     this.$input = this.$el.querySelector(".atk-input");
     this.$input.value = `${this.page}`;
     this.$input.oninput = () => this.input();
@@ -4337,12 +3169,14 @@ class ReadMoreBtn {
     __publicField(this, "origText", "Load More");
     this.conf = conf;
     this.origText = this.conf.text || this.origText;
-    this.$el = createElement(`<div class="atk-list-read-more" style="display: none;">
+    this.$el = createElement(
+      `<div class="atk-list-read-more" style="display: none;">
       <div class="atk-list-read-more-inner">
         <div class="atk-loading-icon" style="display: none;"></div>
         <span class="atk-text">${this.origText}</span>
       </div>
-    </div>`);
+    </div>`
+    );
     this.$loading = this.$el.querySelector(".atk-loading-icon");
     this.$text = this.$el.querySelector(".atk-text");
     this.$el.onclick = () => {
@@ -4439,7 +3273,6 @@ function makeNestCommentNodeList(srcData, sortBy = "DATE_DESC", nestMax = 2) {
   })(nodeList);
   return nodeList;
 }
-const backendMinVersion = "2.1.10";
 class ListLite extends Component {
   constructor(ctx) {
     super(ctx);
@@ -4447,10 +3280,10 @@ class ListLite extends Component {
     __publicField(this, "data");
     __publicField(this, "isLoading", false);
     __publicField(this, "noCommentText");
-    __publicField(this, "flatMode", false);
-    __publicField(this, "nestSortBy");
-    __publicField(this, "pageMode", "pagination");
-    __publicField(this, "pageSize", 20);
+    __publicField(this, "_nestSortBy");
+    __publicField(this, "_flatMode");
+    __publicField(this, "_pageMode");
+    __publicField(this, "_pageSize");
     __publicField(this, "scrollListenerAt");
     __publicField(this, "repositionAt");
     __publicField(this, "pagination");
@@ -4461,18 +3294,53 @@ class ListLite extends Component {
     __publicField(this, "onAfterLoad");
     __publicField(this, "unread", []);
     __publicField(this, "unreadHighlight");
-    this.$el = createElement(`<div class="atk-list-lite">
+    __publicField(this, "confLoaded", false);
+    this.$el = createElement(
+      `<div class="atk-list-lite">
       <div class="atk-list-comments-wrap"></div>
-    </div>`);
+    </div>`
+    );
     this.$commentsWrap = this.$el.querySelector(".atk-list-comments-wrap");
-    this.noCommentText = ctx.conf.noComment || ctx.$t("noComment");
-    this.nestSortBy = this.ctx.conf.nestSort || "DATE_ASC";
     window.setInterval(() => {
       this.$el.querySelectorAll("[data-atk-comment-date]").forEach((el) => {
         const date = el.getAttribute("data-atk-comment-date");
         el.innerText = timeAgo(new Date(Number(date)), this.ctx);
       });
     }, 30 * 1e3);
+    this.ctx.on("conf-loaded", () => {
+    });
+  }
+  get nestSortBy() {
+    if (this._nestSortBy !== void 0)
+      return this._nestSortBy;
+    return this.ctx.conf.nestSort || "DATE_ASC";
+  }
+  set nestSortBy(val) {
+    this._nestSortBy = val;
+  }
+  get flatMode() {
+    if (this._flatMode !== void 0)
+      return this._flatMode;
+    if (this.ctx.conf.flatMode === true || Number(this.ctx.conf.nestMax) <= 1)
+      return true;
+    if (this.ctx.conf.flatMode === "auto" && window.matchMedia("(max-width: 768px)").matches)
+      return true;
+    return false;
+  }
+  set flatMode(val) {
+    this._flatMode = val;
+  }
+  get pageMode() {
+    return this._pageMode || (this.conf.pagination.readMore ? "read-more" : "pagination");
+  }
+  set pageMode(val) {
+    this._pageMode = val;
+  }
+  get pageSize() {
+    return this._pageSize || this.conf.pagination.pageSize;
+  }
+  set pageSize(val) {
+    this._pageSize = val;
   }
   getData() {
     return this.data;
@@ -4500,12 +3368,12 @@ class ListLite extends Component {
       const setLoading2 = (val) => this.setLoading(val, isFirstLoad);
       setLoading2(true);
       this.ctx.trigger("list-load");
-      if (isFirstLoad && this.pageMode === "read-more") {
+      if (this.pageMode === "read-more" && isFirstLoad || this.pageMode === "pagination") {
         this.ctx.clearAllComments();
       }
       let listData;
       try {
-        listData = yield this.ctx.getApi().get(offset, this.pageSize, this.flatMode, this.paramsEditor);
+        listData = yield this.ctx.getApi().comment.get(offset, this.pageSize, this.flatMode, this.paramsEditor);
       } catch (e) {
         this.onError(e.msg || String(e), offset, e.data);
         throw e;
@@ -4525,24 +3393,24 @@ class ListLite extends Component {
   }
   onLoad(data, offset) {
     var _a, _b;
-    if (this.pageMode === "pagination") {
-      this.ctx.clearAllComments();
-    }
     this.data = data;
+    if (!this.confLoaded) {
+      if (this.conf.useBackendConf)
+        this.ctx.updateConf(data.conf.frontend_conf);
+      else
+        this.ctx.updateConf({});
+      this.confLoaded = true;
+    }
     const feMinVersion = ((_a = data.api_version) == null ? void 0 : _a.fe_min_version) || "0.0.0";
-    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, "2.3.4"))
+    if (this.ctx.conf.versionCheck && this.versionCheck("frontend", feMinVersion, version))
       return;
     if (this.ctx.conf.versionCheck && this.versionCheck("backend", backendMinVersion, (_b = data.api_version) == null ? void 0 : _b.version))
       return;
-    if (data.conf && typeof data.conf.img_upload === "boolean") {
-      this.ctx.conf.imgUpload = data.conf.img_upload;
-    }
     this.importComments(data.comments);
     this.refreshPagination(offset, this.flatMode ? data.total : data.total_roots);
     this.refreshUI();
     this.ctx.updateNotifies(data.unread || []);
     this.ctx.trigger("list-loaded");
-    this.ctx.trigger("conf-updated");
     if (this.onAfterLoad)
       this.onAfterLoad(data);
   }
@@ -4606,6 +3474,9 @@ class ListLite extends Component {
   }
   onError(msg, offset, errData) {
     var _a;
+    if (!this.confLoaded) {
+      this.ctx.updateConf({});
+    }
     msg = String(msg);
     console.error(msg);
     if (offset !== 0 && this.pageMode === "read-more") {
@@ -4639,7 +3510,7 @@ class ListLite extends Component {
     if (isNoComment) {
       if (!$noComment) {
         $noComment = createElement('<div class="atk-list-no-comment"></div>');
-        $noComment.innerHTML = this.noCommentText;
+        $noComment.innerHTML = this.noCommentText || this.ctx.conf.noComment || this.ctx.$t("noComment");
         this.$commentsWrap.appendChild($noComment);
       }
     } else {
@@ -4653,11 +3524,11 @@ class ListLite extends Component {
   createComment(cData, ctxData) {
     if (!ctxData)
       ctxData = this.ctx.getCommentDataList();
-    const comment2 = new Comment(this.ctx, cData, {
+    const comment = new Comment(this.ctx, cData, {
       isFlatMode: this.flatMode,
       afterRender: () => {
         if (this.renderComment)
-          this.renderComment(comment2);
+          this.renderComment(comment);
       },
       onDelete: (c) => {
         this.ctx.deleteComment(c);
@@ -4665,9 +3536,9 @@ class ListLite extends Component {
       },
       replyTo: cData.rid ? ctxData.find((c) => c.id === cData.rid) : void 0
     });
-    comment2.render();
-    this.ctx.getCommentList().push(comment2);
-    return comment2;
+    comment.render();
+    this.ctx.getCommentList().push(comment);
+    return comment;
   }
   importComments(srcData) {
     if (this.flatMode) {
@@ -4699,37 +3570,37 @@ class ListLite extends Component {
   putCommentFlatMode(cData, ctxData, insertMode) {
     if (cData.is_collapsed)
       cData.is_allow_reply = false;
-    const comment2 = this.createComment(cData, ctxData);
+    const comment = this.createComment(cData, ctxData);
     if (cData.visible) {
       if (insertMode === "append")
-        this.$commentsWrap.append(comment2.getEl());
+        this.$commentsWrap.append(comment.getEl());
       if (insertMode === "prepend")
-        this.$commentsWrap.prepend(comment2.getEl());
-      comment2.getRender().playFadeAnim();
+        this.$commentsWrap.prepend(comment.getEl());
+      comment.getRender().playFadeAnim();
     }
-    comment2.getRender().checkHeightLimit();
-    return comment2;
+    comment.getRender().checkHeightLimit();
+    return comment;
   }
   insertComment(commentData) {
     if (!this.flatMode) {
-      const comment2 = this.createComment(commentData);
+      const comment = this.createComment(commentData);
       if (commentData.rid === 0) {
-        this.$commentsWrap.prepend(comment2.getEl());
+        this.$commentsWrap.prepend(comment.getEl());
       } else {
         const parent = this.ctx.findComment(commentData.rid);
         if (parent) {
-          parent.putChild(comment2, this.nestSortBy === "DATE_ASC" ? "append" : "prepend");
-          comment2.getParents().forEach((p) => {
+          parent.putChild(comment, this.nestSortBy === "DATE_ASC" ? "append" : "prepend");
+          comment.getParents().forEach((p) => {
             p.getRender().heightLimitRemoveForChildren();
           });
         }
       }
-      comment2.getRender().checkHeightLimit();
-      scrollIntoView(comment2.getEl());
-      comment2.getRender().playFadeAnim();
+      comment.getRender().checkHeightLimit();
+      scrollIntoView(comment.getEl());
+      comment.getRender().playFadeAnim();
     } else {
-      const comment2 = this.putCommentFlatMode(commentData, this.ctx.getCommentDataList(), "prepend");
-      scrollIntoView(comment2.getEl());
+      const comment = this.putCommentFlatMode(commentData, this.ctx.getCommentDataList(), "prepend");
+      scrollIntoView(comment.getEl());
     }
     if (this.data)
       this.data.total += 1;
@@ -4738,25 +3609,25 @@ class ListLite extends Component {
     this.ctx.trigger("list-inserted", commentData);
   }
   updateComment(commentData) {
-    const comment2 = this.ctx.findComment(commentData.id);
-    if (comment2) {
-      comment2.setData(commentData);
+    const comment = this.ctx.findComment(commentData.id);
+    if (comment) {
+      comment.setData(commentData);
     }
   }
   updateUnread(notifies) {
     this.unread = notifies;
     if (this.unreadHighlight === true) {
-      this.ctx.getCommentList().forEach((comment2) => {
-        const notify = this.unread.find((o) => o.comment_id === comment2.getID());
+      this.ctx.getCommentList().forEach((comment) => {
+        const notify = this.unread.find((o) => o.comment_id === comment.getID());
         if (notify) {
-          comment2.getRender().setUnread(true);
-          comment2.getRender().setOpenAction(() => {
+          comment.getRender().setUnread(true);
+          comment.getRender().setOpenAction(() => {
             window.open(notify.read_link);
-            this.unread = this.unread.filter((o) => o.comment_id !== comment2.getID());
+            this.unread = this.unread.filter((o) => o.comment_id !== comment.getID());
             this.ctx.updateNotifies(this.unread);
           });
         } else {
-          comment2.getRender().setUnread(false);
+          comment.getRender().setUnread(false);
         }
       });
     }
@@ -4769,7 +3640,6 @@ class ListLite extends Component {
       ignoreBtn.onclick = () => {
         setError(this.$el.parentElement, null);
         this.ctx.conf.versionCheck = false;
-        this.ctx.trigger("conf-updated");
         this.fetchComments(0);
       };
       errEl.append(ignoreBtn);
@@ -4790,18 +3660,9 @@ class List extends ListLite {
     __publicField(this, "$dropdownWrap");
     __publicField(this, "goToCommentFounded", false);
     __publicField(this, "goToCommentDelay", true);
+    __publicField(this, "dropdownLoaded", false);
     el.querySelector(".atk-list-body").append(this.$el);
     this.$el = el;
-    if (this.ctx.conf.flatMode === true) {
-      this.flatMode = true;
-    } else if (this.conf.nestMax && this.conf.nestMax <= 1) {
-      this.flatMode = true;
-    } else if (this.ctx.conf.flatMode === "auto") {
-      if (window.matchMedia("(max-width: 768px)").matches)
-        this.flatMode = true;
-    }
-    this.pageMode = this.conf.pagination.readMore ? "read-more" : "pagination";
-    this.pageSize = this.conf.pagination.pageSize || 20;
     this.repositionAt = this.$el;
     this.initListActionBtn();
     this.$commentCount = this.$el.querySelector(".atk-comment-count");
@@ -4809,10 +3670,7 @@ class List extends ListLite {
       count: '<span class="atk-comment-count-num">0</span>'
     });
     this.$commentCountNum = this.$commentCount.querySelector(".atk-comment-count-num");
-    if (this.ctx.conf.listSort) {
-      this.initDropdown();
-    }
-    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${"2.3.4"}">Artalk</a>`;
+    this.$el.querySelector(".atk-copyright").innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${version}">Artalk</a>`;
   }
   initListActionBtn() {
     this.$openSidebarBtn = this.$el.querySelector('[data-action="open-sidebar"]');
@@ -4846,6 +3704,9 @@ class List extends ListLite {
       this.ctx.editorOpen();
       this.$closeCommentBtn.innerHTML = this.$t("closeComment");
     }
+    if (this.ctx.conf.listSort) {
+      this.initDropdown();
+    }
   }
   onLoad(data, offset) {
     super.onLoad(data, offset);
@@ -4865,8 +3726,8 @@ class List extends ListLite {
     }
     if (!commentId)
       return;
-    const comment2 = this.ctx.findComment(commentId);
-    if (!comment2) {
+    const comment = this.ctx.findComment(commentId);
+    if (!comment) {
       if (this.readMoreBtn)
         this.readMoreBtn.click();
       else if (this.pagination)
@@ -4875,19 +3736,19 @@ class List extends ListLite {
     }
     const notifyKey = getQueryParam("atk_notify_key");
     if (notifyKey) {
-      this.ctx.getApi().markRead(notifyKey).then(() => {
+      this.ctx.getApi().user.markRead(notifyKey).then(() => {
         this.unread = this.unread.filter((o) => o.comment_id !== commentId);
         this.updateUnread(this.unread);
       });
     }
-    comment2.getParents().forEach((p) => {
+    comment.getParents().forEach((p) => {
       p.getRender().heightLimitRemoveForChildren();
     });
     const goTo = () => {
-      scrollIntoView(comment2.getEl(), false);
-      comment2.getEl().classList.remove("atk-flash-once");
+      scrollIntoView(comment.getEl(), false);
+      comment.getEl().classList.remove("atk-flash-once");
       window.setTimeout(() => {
-        comment2.getEl().classList.add("atk-flash-once");
+        comment.getEl().classList.add("atk-flash-once");
       }, 150);
     };
     if (!this.goToCommentDelay)
@@ -4900,7 +3761,7 @@ class List extends ListLite {
     if (!this.data || !this.data.page)
       return;
     this.ctx.editorShowLoading();
-    this.ctx.getApi().pageEdit(this.data.page).then((page) => {
+    this.ctx.getApi().page.pageEdit(this.data.page).then((page) => {
       if (this.data)
         this.data.page = __spreadValues({}, page);
       this.refreshUI();
@@ -4919,6 +3780,9 @@ class List extends ListLite {
     }
   }
   initDropdown() {
+    if (this.dropdownLoaded)
+      return;
+    this.dropdownLoaded = true;
     this.$dropdownWrap = this.$commentCount;
     this.$commentCount.classList.add("atk-dropdown-wrap");
     this.$dropdownWrap.append(createElement(`<span class="atk-arrow-down-icon"></span>`));
@@ -4984,8 +3848,1377 @@ class List extends ListLite {
     this.showUnreadBadge((notifies == null ? void 0 : notifies.length) || 0);
   }
 }
-var sidebarLayer = "";
-var SidebarHTML = '<div class="atk-sidebar-layer">\n  <div class="atk-sidebar-inner">\n    <div class="atk-sidebar-header">\n      <div class="atk-sidebar-close"><i class="atk-icon atk-icon-close"></i></div>\n    </div>\n    <div class="atk-sidebar-iframe-wrap"></div>\n  </div>\n</div>\n';
+class Context {
+  constructor(conf, $root) {
+    __publicField(this, "api");
+    __publicField(this, "editor");
+    __publicField(this, "list");
+    __publicField(this, "sidebarLayer");
+    __publicField(this, "checkerLauncher");
+    __publicField(this, "cid");
+    __publicField(this, "conf");
+    __publicField(this, "user");
+    __publicField(this, "$root");
+    __publicField(this, "markedInstance");
+    __publicField(this, "markedReplacers", []);
+    __publicField(this, "commentList", []);
+    __publicField(this, "eventList", []);
+    __publicField(this, "darkModeMedia", window.matchMedia("(prefers-color-scheme: dark)"));
+    __publicField(this, "darkModeAutoFunc");
+    this.cid = +new Date();
+    this.conf = conf;
+    this.user = new User(this);
+    this.$root = $root || document.createElement("div");
+    this.$root.setAttribute("atk-run-id", this.cid.toString());
+    this.$root.classList.add("artalk");
+    this.$root.innerHTML = "";
+    this.api = new Api(this);
+    this.on("conf-loaded", () => {
+      this.refreshDarkModeConf();
+    });
+  }
+  setApi(api) {
+    this.api = api;
+  }
+  setEditor(editor) {
+    this.editor = editor;
+  }
+  setList(list) {
+    this.list = list;
+  }
+  setSidebarLayer(sidebarLayer) {
+    this.sidebarLayer = sidebarLayer;
+  }
+  setCheckerLauncher(checkerLauncher) {
+    this.checkerLauncher = checkerLauncher;
+  }
+  getApi() {
+    return this.api;
+  }
+  getCommentList() {
+    return this.commentList;
+  }
+  getCommentDataList() {
+    return this.commentList.map((c) => c.getData());
+  }
+  findComment(id) {
+    return this.commentList.find((c) => c.getData().id === id);
+  }
+  deleteComment(_comment) {
+    let comment;
+    if (typeof _comment === "number") {
+      const findComment = this.findComment(_comment);
+      if (!findComment)
+        throw Error(`Comment ${_comment} cannot be found`);
+      comment = findComment;
+    } else
+      comment = _comment;
+    comment.getEl().remove();
+    this.commentList.splice(this.commentList.indexOf(comment), 1);
+    if (this.list) {
+      const listData = this.list.getData();
+      if (listData)
+        listData.total -= 1;
+      this.list.refreshUI();
+    }
+  }
+  clearAllComments() {
+    if (this.list) {
+      this.list.getCommentsWrapEl().innerHTML = "";
+      this.list.clearData();
+    }
+    this.commentList = [];
+  }
+  insertComment(commentData) {
+    var _a;
+    (_a = this.list) == null ? void 0 : _a.insertComment(commentData);
+  }
+  updateComment(commentData) {
+    var _a;
+    (_a = this.list) == null ? void 0 : _a.updateComment(commentData);
+  }
+  replyComment(commentData, $comment, scroll) {
+    this.editor.setReply(commentData, $comment, scroll);
+  }
+  cancelReplyComment() {
+    this.editor.cancelReply();
+  }
+  editComment(commentData, $comment) {
+    this.editor.setEditComment(commentData, $comment);
+  }
+  cancelEditComment() {
+    this.editor.cancelEditComment();
+  }
+  updateNotifies(notifies) {
+    var _a;
+    (_a = this.list) == null ? void 0 : _a.updateUnread(notifies);
+  }
+  listReload() {
+    var _a;
+    (_a = this.list) == null ? void 0 : _a.reload();
+  }
+  reload() {
+    this.listReload();
+  }
+  listRefreshUI() {
+    var _a;
+    (_a = this.list) == null ? void 0 : _a.refreshUI();
+  }
+  listHashGotoCheck() {
+    if (!this.list || this.list instanceof List)
+      return;
+    const list = this.list;
+    list.goToCommentDelay = false;
+    list.checkGoToCommentByUrlHash();
+  }
+  editorOpen() {
+    this.editor.open();
+  }
+  editorClose() {
+    this.editor.close();
+  }
+  editorShowLoading() {
+    this.editor.showLoading();
+  }
+  editorHideLoading() {
+    this.editor.hideLoading();
+  }
+  editorShowNotify(msg, type) {
+    this.editor.showNotify(msg, type);
+  }
+  editorTravel($el) {
+    this.editor.travel($el);
+  }
+  editorTravelBack() {
+    this.editor.travelBack();
+  }
+  showSidebar(payload) {
+    this.sidebarLayer.show(payload);
+  }
+  hideSidebar() {
+    this.sidebarLayer.hide();
+  }
+  checkAdmin(payload) {
+    this.checkerLauncher.checkAdmin(payload);
+  }
+  checkCaptcha(payload) {
+    this.checkerLauncher.checkCaptcha(payload);
+  }
+  checkAdminShowEl() {
+    const items = [];
+    this.$root.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    const { $wrap: $layerWrap } = GetLayerWrap(this);
+    if ($layerWrap)
+      $layerWrap.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    const $sidebarEl = document.querySelector(".atk-sidebar");
+    if ($sidebarEl)
+      $sidebarEl.querySelectorAll(`[atk-only-admin-show]`).forEach((item) => items.push(item));
+    items.forEach(($item) => {
+      if (this.user.data.isAdmin)
+        $item.classList.remove("atk-hide");
+      else
+        $item.classList.add("atk-hide");
+    });
+  }
+  on(name, handler, scope = "internal") {
+    this.eventList.push({ name, handler, scope });
+  }
+  off(name, handler, scope = "internal") {
+    this.eventList = this.eventList.filter((evt) => {
+      if (handler)
+        return !(evt.name === name && evt.handler === handler && evt.scope === scope);
+      return !(evt.name === name && evt.scope === scope);
+    });
+  }
+  trigger(name, payload, scope) {
+    this.eventList.filter((evt) => evt.name === name && (scope ? evt.scope === scope : true)).map((evt) => evt.handler).forEach((handler) => handler(payload));
+  }
+  $t(key, args = {}) {
+    return getI18n(this.conf.locale, key, args);
+  }
+  setDarkMode(darkMode) {
+    if (this.conf.darkMode === darkMode)
+      return;
+    const darkModeClassName = "atk-dark-mode";
+    this.conf.darkMode = darkMode;
+    if (darkMode)
+      this.$root.classList.add(darkModeClassName);
+    else
+      this.$root.classList.remove(darkModeClassName);
+    const { $wrap: $layerWrap } = GetLayerWrap(this);
+    if ($layerWrap) {
+      if (darkMode)
+        $layerWrap.classList.add(darkModeClassName);
+      else
+        $layerWrap.classList.remove(darkModeClassName);
+    }
+  }
+  refreshDarkModeConf() {
+    if (this.conf.darkMode === "auto") {
+      this.setDarkMode(this.darkModeMedia.matches);
+      if (!this.darkModeAutoFunc) {
+        this.darkModeAutoFunc = (evt) => {
+          this.setDarkMode(evt.matches);
+        };
+        this.darkModeMedia.addEventListener("change", this.darkModeAutoFunc);
+      }
+    } else {
+      if (this.darkModeAutoFunc) {
+        this.darkModeMedia.removeEventListener("change", this.darkModeAutoFunc);
+      }
+      this.setDarkMode(this.conf.darkMode || false);
+    }
+  }
+  updateConf(conf) {
+    this.conf = mergeDeep(this.conf, conf);
+    this.trigger("conf-loaded");
+  }
+}
+const defaults = {
+  el: "",
+  pageKey: "",
+  pageTitle: "",
+  server: "",
+  site: "",
+  placeholder: "",
+  noComment: "",
+  sendBtn: "",
+  darkMode: false,
+  editorTravel: true,
+  flatMode: "auto",
+  nestMax: 2,
+  nestSort: "DATE_ASC",
+  emoticons: "https://cdn.jsdelivr.net/gh/ArtalkJS/Emoticons/grps/default.json",
+  vote: true,
+  voteDown: false,
+  uaBadge: true,
+  listSort: true,
+  preview: true,
+  countEl: "#ArtalkCount",
+  pvEl: "#ArtalkPV",
+  gravatar: {
+    default: "mp",
+    mirror: "https://cravatar.cn/avatar/"
+  },
+  pagination: {
+    pageSize: 20,
+    readMore: true,
+    autoLoad: true
+  },
+  heightLimit: {
+    content: 300,
+    children: 400
+  },
+  imgUpload: true,
+  reqTimeout: 15e3,
+  versionCheck: true,
+  useBackendConf: true,
+  locale: "zh-CN"
+};
+{
+  defaults.vote = false;
+  defaults.uaBadge = false;
+  defaults.emoticons = false;
+}
+class Dialog {
+  constructor(ctx, contentEl) {
+    __publicField(this, "ctx");
+    __publicField(this, "$el");
+    __publicField(this, "$content");
+    __publicField(this, "$actions");
+    this.ctx = ctx;
+    this.$el = createElement(
+      `<div class="atk-layer-dialog-wrap">
+        <div class="atk-layer-dialog">
+          <div class="atk-layer-dialog-content"></div>
+          <div class="atk-layer-dialog-actions"></div>
+        </div>
+      </div>`
+    );
+    this.$actions = this.$el.querySelector(".atk-layer-dialog-actions");
+    this.$content = this.$el.querySelector(".atk-layer-dialog-content");
+    this.$content.appendChild(contentEl);
+    return this;
+  }
+  setYes(handler) {
+    const btn = createElement(
+      `<button data-action="confirm">${this.ctx.$t("confirm")}</button>`
+    );
+    btn.onclick = this.onBtnClick(handler);
+    this.$actions.appendChild(btn);
+    return this;
+  }
+  setNo(handler) {
+    const btn = createElement(
+      `<button data-action="cancel">${this.ctx.$t("cancel")}</button>`
+    );
+    btn.onclick = this.onBtnClick(handler);
+    this.$actions.appendChild(btn);
+    return this;
+  }
+  onBtnClick(handler) {
+    return (evt) => {
+      const re = handler(evt.currentTarget, this);
+      if (re === void 0 || re === true) {
+        this.$el.remove();
+      }
+    };
+  }
+}
+const CaptchaChecker = {
+  request(that, ctx, inputVal) {
+    return that.ctx.getApi().captcha.captchaCheck(inputVal);
+  },
+  body(that, ctx) {
+    if (that.captchaConf.iframe) {
+      const $iframeWrap = createElement(`<div class="atk-checker-iframe-wrap"></div>`);
+      const $iframe = createElement(`<iframe class="atk-fade-in"></iframe>`);
+      $iframe.style.display = "none";
+      showLoading($iframeWrap, { transparentBg: true });
+      $iframe.src = `${that.ctx.conf.server}/api/captcha/get?t=${+new Date()}`;
+      $iframe.onload = () => {
+        $iframe.style.display = "";
+        hideLoading($iframeWrap);
+      };
+      $iframeWrap.append($iframe);
+      const $closeBtn = createElement(`<div class="atk-close-btn"><i class="atk-icon atk-icon-close"></i></div>`);
+      $iframeWrap.append($closeBtn);
+      ctx.hideInteractInput();
+      let stop = false;
+      const sleep = (ms) => new Promise((resolve) => {
+        window.setTimeout(() => {
+          resolve(null);
+        }, ms);
+      });
+      (function queryStatus() {
+        return __async(this, null, function* () {
+          yield sleep(1e3);
+          if (stop)
+            return;
+          let isPass = false;
+          try {
+            const resp = yield that.ctx.getApi().captcha.captchaStatus();
+            isPass = resp.is_pass;
+          } catch (e) {
+            isPass = false;
+          }
+          if (isPass) {
+            ctx.triggerSuccess();
+          } else {
+            queryStatus();
+          }
+        });
+      })();
+      $closeBtn.onclick = () => {
+        stop = true;
+        ctx.cancel();
+      };
+      return $iframeWrap;
+    }
+    const elem = createElement(
+      `<span><img class="atk-captcha-img" src="${that.captchaConf.imgData || ""}">${that.ctx.$t("captchaCheck")}</span>`
+    );
+    elem.querySelector(".atk-captcha-img").onclick = () => {
+      const imgEl = elem.querySelector(".atk-captcha-img");
+      that.ctx.getApi().captcha.captchaGet().then((imgData) => {
+        imgEl.setAttribute("src", imgData);
+      }).catch((err) => {
+        console.error("Failed to get captcha image ", err);
+      });
+    };
+    return elem;
+  },
+  onSuccess(that, ctx, data, inputVal, formEl) {
+    that.captchaConf.val = inputVal;
+  },
+  onError(that, ctx, err, inputVal, formEl) {
+    formEl.querySelector(".atk-captcha-img").click();
+    formEl.querySelector('input[type="text"]').value = "";
+  }
+};
+const AdminChecker = {
+  inputType: "password",
+  request(that, ctx, inputVal) {
+    const data = {
+      name: that.ctx.user.data.nick,
+      email: that.ctx.user.data.email,
+      password: inputVal
+    };
+    return (() => __async(this, null, function* () {
+      const resp = yield that.ctx.getApi().user.login(data.name, data.email, data.password);
+      return resp.token;
+    }))();
+  },
+  body(that, ctx) {
+    return createElement(`<span>${that.ctx.$t("adminCheck")}</span>`);
+  },
+  onSuccess(that, ctx, userToken, inputVal, formEl) {
+    that.ctx.user.update({
+      isAdmin: true,
+      token: userToken
+    });
+    that.ctx.trigger("user-changed", that.ctx.user.data);
+    that.ctx.listReload();
+  },
+  onError(that, ctx, err, inputVal, formEl) {
+  }
+};
+class CheckerLauncher {
+  constructor(ctx) {
+    __publicField(this, "ctx");
+    __publicField(this, "launched", []);
+    __publicField(this, "captchaConf", {});
+    this.ctx = ctx;
+  }
+  checkCaptcha(payload) {
+    this.captchaConf.imgData = payload.imgData;
+    this.captchaConf.iframe = payload.iframe;
+    this.fire(CaptchaChecker, payload);
+  }
+  checkAdmin(payload) {
+    this.fire(AdminChecker, payload);
+  }
+  fire(checker, payload) {
+    if (this.launched.includes(checker))
+      return;
+    this.launched.push(checker);
+    const layer = new Layer(this.ctx, `checker-${new Date().getTime()}`);
+    layer.setMaskClickHide(false);
+    layer.show();
+    let hideInteractInput = false;
+    const checkerCtx = {
+      getLayer: () => layer,
+      hideInteractInput: () => {
+        hideInteractInput = true;
+      },
+      triggerSuccess: () => {
+        this.close(checker, layer);
+        if (checker.onSuccess)
+          checker.onSuccess(this, checkerCtx, "", "", formEl);
+        if (payload.onSuccess)
+          payload.onSuccess("", dialog.$el);
+      },
+      cancel: () => {
+        this.close(checker, layer);
+        if (payload.onCancel)
+          payload.onCancel();
+      }
+    };
+    const formEl = createElement();
+    formEl.appendChild(checker.body(this, checkerCtx));
+    const $input = createElement(
+      `<input id="check" type="${checker.inputType || "text"}" autocomplete="off" required placeholder="">`
+    );
+    formEl.appendChild($input);
+    setTimeout(() => $input.focus(), 80);
+    $input.onkeyup = (evt) => {
+      if (evt.key === "Enter" || evt.keyCode === 13) {
+        evt.preventDefault();
+        layer.getEl().querySelector('button[data-action="confirm"]').click();
+      }
+    };
+    let btnTextOrg;
+    const dialog = new Dialog(this.ctx, formEl);
+    dialog.setYes((btnEl) => {
+      const inputVal = $input.value.trim();
+      if (!btnTextOrg)
+        btnTextOrg = btnEl.innerText;
+      const btnTextSet = (btnText) => {
+        btnEl.innerText = btnText;
+        btnEl.classList.add("error");
+      };
+      const btnTextRestore = () => {
+        btnEl.innerText = btnTextOrg || "";
+        btnEl.classList.remove("error");
+      };
+      btnEl.innerText = `${this.ctx.$t("loading")}...`;
+      checker.request(this, checkerCtx, inputVal).then((data) => {
+        this.close(checker, layer);
+        if (checker.onSuccess)
+          checker.onSuccess(this, checkerCtx, data, inputVal, formEl);
+        if (payload.onSuccess)
+          payload.onSuccess(inputVal, dialog.$el);
+      }).catch((err) => {
+        btnTextSet(String(err.msg || String(err)));
+        if (checker.onError)
+          checker.onError(this, checkerCtx, err, inputVal, formEl);
+        const tf = setTimeout(() => btnTextRestore(), 3e3);
+        $input.onfocus = () => {
+          btnTextRestore();
+          clearTimeout(tf);
+        };
+      });
+      return false;
+    });
+    dialog.setNo(() => {
+      this.close(checker, layer);
+      if (payload.onCancel)
+        payload.onCancel();
+      return false;
+    });
+    if (hideInteractInput) {
+      $input.style.display = "none";
+      dialog.$el.querySelector(".atk-layer-dialog-actions").style.display = "none";
+    }
+    layer.getEl().append(dialog.$el);
+    if (payload.onMount)
+      payload.onMount(dialog.$el);
+  }
+  close(checker, layer) {
+    layer.disposeNow();
+    this.launched = this.launched.filter((c) => c !== checker);
+  }
+}
+const EditorHTML = '<div class="atk-main-editor">\n  <div class="atk-header">\n    <input name="nick" class="atk-nick" type="text" required="required">\n    <input name="email" class="atk-email" type="email" required="required">\n    <input name="link" class="atk-link" type="url">\n  </div>\n  <div class="atk-textarea-wrap">\n    <textarea class="atk-textarea"></textarea>\n  </div>\n  <div class="atk-plug-panel-wrap" style="display: none;"></div>\n  <div class="atk-bottom">\n    <div class="atk-item atk-plug-btn-wrap"></div>\n    <div class="atk-item">\n      <button type="button" class="atk-send-btn"></button>\n    </div>\n  </div>\n  <div class="atk-notify-wrap"></div>\n</div>\n';
+const emoticonsPlug = "";
+class EditorPlug {
+  constructor(editor) {
+    __publicField(this, "editor");
+    __publicField(this, "$panel");
+    __publicField(this, "$btn");
+    __publicField(this, "onHeaderInput");
+    this.editor = editor;
+  }
+  get ctx() {
+    return this.editor.ctx;
+  }
+  registerPanel(html = "<div></div>") {
+    this.$panel = createElement(html);
+    return this.$panel;
+  }
+  registerBtn(html) {
+    this.$btn = createElement(`<span class="atk-plug-btn" data-plug-name="${this.constructor.name}">${html}</span>`);
+    return this.$btn;
+  }
+  registerHeaderInputEvt(action) {
+    this.onHeaderInput = action;
+  }
+  getPanel() {
+    return this.$panel;
+  }
+  getBtn() {
+    return this.$btn;
+  }
+}
+__publicField(EditorPlug, "Name");
+class EmoticonsPlug extends EditorPlug {
+  constructor(editor) {
+    super(editor);
+    __publicField(this, "emoticons", []);
+    __publicField(this, "loadingTask", null);
+    __publicField(this, "$grpWrap");
+    __publicField(this, "$grpSwitcher");
+    __publicField(this, "isListLoaded", false);
+    __publicField(this, "isImgLoaded", false);
+    this.editor = editor;
+    this.registerPanel(`<div class="atk-editor-plug-emoticons"></div>`);
+    this.registerBtn(this.ctx.$t("emoticon"));
+    window.setTimeout(() => {
+      this.loadEmoticonsData();
+    }, 1e3);
+  }
+  onPanelShow() {
+    (() => __async(this, null, function* () {
+      yield this.loadEmoticonsData();
+      if (!this.isImgLoaded) {
+        this.initEmoticonsList();
+        this.isImgLoaded = true;
+      }
+      setTimeout(() => {
+        this.changeListHeight();
+      }, 30);
+    }))();
+  }
+  onPanelHide() {
+    this.$panel.parentElement.style.height = "";
+  }
+  loadEmoticonsData() {
+    return __async(this, null, function* () {
+      if (this.isListLoaded)
+        return;
+      if (this.loadingTask !== null) {
+        yield this.loadingTask;
+        return;
+      }
+      this.loadingTask = (() => __async(this, null, function* () {
+        showLoading(this.$panel);
+        this.emoticons = yield this.handleData(this.ctx.conf.emoticons);
+        hideLoading(this.$panel);
+        this.loadingTask = null;
+        this.isListLoaded = true;
+      }))();
+      yield this.loadingTask;
+    });
+  }
+  handleData(data) {
+    return __async(this, null, function* () {
+      if (!Array.isArray(data) && ["object", "string"].includes(typeof data)) {
+        data = [data];
+      }
+      if (!Array.isArray(data)) {
+        setError(this.$panel, "\u8868\u60C5\u5305\u6570\u636E\u5FC5\u987B\u4E3A Array/Object/String \u7C7B\u578B");
+        hideLoading(this.$panel);
+        return [];
+      }
+      const pushGrp = (grp) => {
+        if (typeof grp !== "object")
+          return;
+        if (grp.name && data.find((o) => o.name === grp.name))
+          return;
+        data.push(grp);
+      };
+      const remoteLoad = (d) => __async(this, null, function* () {
+        yield Promise.all(d.map((grp, index) => __async(this, null, function* () {
+          if (typeof grp === "object" && !Array.isArray(grp)) {
+            pushGrp(grp);
+          } else if (Array.isArray(grp)) {
+            yield remoteLoad(grp);
+          } else if (typeof grp === "string") {
+            const grpData = yield this.remoteLoad(grp);
+            if (Array.isArray(grpData))
+              yield remoteLoad(grpData);
+            else if (typeof grpData === "object")
+              pushGrp(grpData);
+          }
+        })));
+      });
+      yield remoteLoad(data);
+      data.forEach((item) => {
+        if (this.isOwOFormat(item)) {
+          const c = this.convertOwO(item);
+          c.forEach((grp) => {
+            pushGrp(grp);
+          });
+        } else if (Array.isArray(item)) {
+          item.forEach((grp) => {
+            pushGrp(grp);
+          });
+        }
+      });
+      data = data.filter((item) => typeof item === "object" && !Array.isArray(item) && !!item && !!item.name);
+      this.solveNullKey(data);
+      this.solveSameKey(data);
+      return data;
+    });
+  }
+  remoteLoad(url) {
+    return __async(this, null, function* () {
+      if (!url)
+        return [];
+      try {
+        const resp = yield fetch(url);
+        const json = yield resp.json();
+        return json;
+      } catch (err) {
+        hideLoading(this.$panel);
+        setError(this.$panel, `\u8868\u60C5\u52A0\u8F7D\u5931\u8D25 ${String(err)}`);
+        return [];
+      }
+    });
+  }
+  solveNullKey(data) {
+    data.forEach((grp) => {
+      grp.items.forEach((item, index) => {
+        if (!item.key)
+          item.key = `${grp.name} ${index + 1}`;
+      });
+    });
+  }
+  solveSameKey(data) {
+    const tmp = {};
+    data.forEach((grp) => {
+      grp.items.forEach((item) => {
+        if (!item.key || String(item.key).trim() === "")
+          return;
+        if (!tmp[item.key])
+          tmp[item.key] = 1;
+        else
+          tmp[item.key]++;
+        if (tmp[item.key] > 1)
+          item.key = `${item.key} ${tmp[item.key]}`;
+      });
+    });
+  }
+  isOwOFormat(data) {
+    try {
+      return typeof data === "object" && !!Object.values(data).length && Array.isArray(Object.keys(Object.values(data)[0].container)) && Object.keys(Object.values(data)[0].container[0]).includes("icon");
+    } catch (e) {
+      return false;
+    }
+  }
+  convertOwO(owoData) {
+    const dest = [];
+    Object.entries(owoData).forEach(([grpName, grp]) => {
+      const nGrp = { name: grpName, type: grp.type, items: [] };
+      grp.container.forEach((item, index) => {
+        const iconStr = item.icon;
+        if (/<(img|IMG)/.test(iconStr)) {
+          const find = /src=["'](.*?)["']/.exec(iconStr);
+          if (find && find.length > 1)
+            item.icon = find[1];
+        }
+        nGrp.items.push({ key: item.text || `${grpName} ${index + 1}`, val: item.icon });
+      });
+      dest.push(nGrp);
+    });
+    return dest;
+  }
+  initEmoticonsList() {
+    this.$grpWrap = createElement(`<div class="atk-grp-wrap"></div>`);
+    this.$panel.append(this.$grpWrap);
+    this.emoticons.forEach((grp, index) => {
+      const $grp = createElement(`<div class="atk-grp" style="display: none;"></div>`);
+      this.$grpWrap.append($grp);
+      $grp.setAttribute("data-index", String(index));
+      $grp.setAttribute("data-grp-name", grp.name);
+      $grp.setAttribute("data-type", grp.type);
+      grp.items.forEach((item) => {
+        const $item = createElement(`<span class="atk-item"></span>`);
+        $grp.append($item);
+        if (!!item.key && !new RegExp(`^(${grp.name})?\\s?[0-9]+$`).test(item.key))
+          $item.setAttribute("title", item.key);
+        if (grp.type === "image") {
+          const imgEl = document.createElement("img");
+          imgEl.src = item.val;
+          imgEl.alt = item.key;
+          $item.append(imgEl);
+        } else {
+          $item.innerText = item.val;
+        }
+        $item.onclick = () => {
+          if (grp.type === "image") {
+            this.editor.insertContent(`:[${item.key}]`);
+          } else {
+            this.editor.insertContent(item.val || "");
+          }
+        };
+      });
+    });
+    if (this.emoticons.length > 1) {
+      this.$grpSwitcher = createElement(`<div class="atk-grp-switcher"></div>`);
+      this.$panel.append(this.$grpSwitcher);
+      this.emoticons.forEach((grp, index) => {
+        const $item = createElement("<span />");
+        $item.innerText = grp.name;
+        $item.setAttribute("data-index", String(index));
+        $item.onclick = () => this.openGrp(index);
+        this.$grpSwitcher.append($item);
+      });
+    }
+    if (this.emoticons.length > 0)
+      this.openGrp(0);
+  }
+  openGrp(index) {
+    var _a, _b, _c;
+    Array.from(this.$grpWrap.children).forEach((item) => {
+      const el = item;
+      if (el.getAttribute("data-index") !== String(index)) {
+        el.style.display = "none";
+      } else {
+        el.style.display = "";
+      }
+    });
+    (_a = this.$grpSwitcher) == null ? void 0 : _a.querySelectorAll("span.active").forEach((item) => item.classList.remove("active"));
+    (_c = (_b = this.$grpSwitcher) == null ? void 0 : _b.querySelector(`span[data-index="${index}"]`)) == null ? void 0 : _c.classList.add("active");
+    this.changeListHeight();
+  }
+  changeListHeight() {
+  }
+  transEmoticonImageText(text) {
+    if (!this.emoticons || !Array.isArray(this.emoticons))
+      return text;
+    this.emoticons.forEach((grp) => {
+      if (grp.type !== "image")
+        return;
+      Object.entries(grp.items).forEach(([index, item]) => {
+        text = text.split(`:[${item.key}]`).join(`<img src="${item.val}" atk-emoticon="${item.key}">`);
+      });
+    });
+    return text;
+  }
+}
+__publicField(EmoticonsPlug, "Name", "emoticons");
+class UploadPlug extends EditorPlug {
+  constructor(editor) {
+    super(editor);
+    __publicField(this, "$imgUploadInput");
+    __publicField(this, "allowImgExts", ["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp"]);
+    this.$imgUploadInput = document.createElement("input");
+    this.$imgUploadInput.type = "file";
+    this.$imgUploadInput.style.display = "none";
+    this.$imgUploadInput.accept = this.allowImgExts.map((o) => `.${o}`).join(",");
+    const $btn = this.registerBtn(`${this.ctx.$t("image")}`);
+    $btn.after(this.$imgUploadInput);
+    $btn.onclick = () => {
+      const $input = this.$imgUploadInput;
+      $input.onchange = () => {
+        (() => __async(this, null, function* () {
+          if (!$input.files || $input.files.length === 0)
+            return;
+          const file = $input.files[0];
+          this.uploadImg(file);
+        }))();
+      };
+      $input.click();
+    };
+    this.ctx.on("conf-loaded", () => {
+      if (!this.ctx.conf.imgUpload) {
+        this.getBtn().setAttribute("atk-only-admin-show", "");
+        this.ctx.checkAdminShowEl();
+      }
+    });
+    const uploadFromFileList = (files) => {
+      if (!files)
+        return;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        this.uploadImg(file);
+      }
+    };
+    this.editor.$textarea.addEventListener("dragover", (evt) => {
+      evt.stopPropagation();
+      evt.preventDefault();
+    });
+    this.editor.$textarea.addEventListener("drop", (evt) => {
+      var _a;
+      const files = (_a = evt.dataTransfer) == null ? void 0 : _a.files;
+      if (files == null ? void 0 : files.length) {
+        evt.preventDefault();
+        uploadFromFileList(files);
+      }
+    });
+    this.editor.$textarea.addEventListener("paste", (evt) => {
+      var _a;
+      const files = (_a = evt.clipboardData) == null ? void 0 : _a.files;
+      if (files == null ? void 0 : files.length) {
+        evt.preventDefault();
+        uploadFromFileList(files);
+      }
+    });
+  }
+  uploadImg(file) {
+    return __async(this, null, function* () {
+      const fileExt = /[^.]+$/.exec(file.name);
+      if (!fileExt || !this.allowImgExts.includes(fileExt[0]))
+        return;
+      if (!this.ctx.user.checkHasBasicUserInfo()) {
+        this.editor.showNotify(this.ctx.$t("uploadLoginMsg"), "w");
+        return;
+      }
+      let insertPrefix = "\n";
+      if (this.editor.$textarea.value.trim() === "")
+        insertPrefix = "";
+      const uploadPlaceholderTxt = `${insertPrefix}![](Uploading ${file.name}...)`;
+      this.editor.insertContent(uploadPlaceholderTxt);
+      let resp;
+      try {
+        if (!this.ctx.conf.imgUploader) {
+          resp = yield this.ctx.getApi().upload.imgUpload(file);
+        } else {
+          resp = { img_url: yield this.ctx.conf.imgUploader(file) };
+        }
+      } catch (err) {
+        console.error(err);
+        this.editor.showNotify(`${this.ctx.$t("uploadFail")}\uFF0C${err.msg}`, "e");
+      }
+      if (!!resp && resp.img_url) {
+        let imgURL = resp.img_url;
+        if (!isValidURL(imgURL))
+          imgURL = getURLBasedOnApi(this.ctx, imgURL);
+        this.editor.setContent(this.editor.$textarea.value.replace(uploadPlaceholderTxt, `${insertPrefix}![](${imgURL})`));
+      } else {
+        this.editor.setContent(this.editor.$textarea.value.replace(uploadPlaceholderTxt, ""));
+      }
+    });
+  }
+}
+__publicField(UploadPlug, "Name", "upload");
+const previewPlug = "";
+class PreviewPlug extends EditorPlug {
+  constructor(editor) {
+    super(editor);
+    __publicField(this, "isBind", false);
+    this.registerPanel(`<div class="atk-editor-plug-preview"></div>`);
+    let btnText = this.editor.$t("preview");
+    if (this.ctx.markedInstance)
+      btnText += ` <i title="Markdown is supported"><svg class="markdown" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3zM9 11H7V8L5.5 9.92 4 8v3H2V5h2l1.5 2L7 5h2v6zm2.99.5L9.5 8H11V5h2v3h1.5l-2.51 3.5z"></path></svg></i>`;
+    this.registerBtn(btnText);
+  }
+  onPanelShow() {
+    this.updateContent();
+    if (!this.isBind) {
+      const event = () => {
+        this.updateContent();
+      };
+      this.editor.$textarea.addEventListener("input", event);
+      this.editor.$textarea.addEventListener("change", event);
+      this.isBind = true;
+    }
+  }
+  updateContent() {
+    if (this.$panel.style.display !== "none") {
+      this.$panel.innerHTML = this.editor.getContentMarked();
+    }
+  }
+}
+__publicField(PreviewPlug, "Name", "preview");
+class HeaderInputPlug extends EditorPlug {
+  constructor(editor) {
+    super(editor);
+    __publicField(this, "queryUserInfo", {
+      timeout: null,
+      abortFunc: null
+    });
+    this.registerHeaderInputEvt((key, $input) => {
+      if (key === "nick" || key === "email") {
+        this.fetchUserInfo();
+      }
+    });
+    this.editor.$link.addEventListener("change", () => {
+      const link = this.editor.$link.value.trim();
+      if (!!link && !/^(http|https):\/\//.test(link)) {
+        this.editor.$link.value = `https://${link}`;
+        this.ctx.user.update({ link: this.editor.$link.value });
+      }
+    });
+  }
+  fetchUserInfo() {
+    this.ctx.user.logout();
+    if (this.queryUserInfo.timeout)
+      window.clearTimeout(this.queryUserInfo.timeout);
+    if (this.queryUserInfo.abortFunc)
+      this.queryUserInfo.abortFunc();
+    this.queryUserInfo.timeout = window.setTimeout(() => {
+      this.queryUserInfo.timeout = null;
+      const { req, abort } = this.ctx.getApi().user.userGet(
+        this.ctx.user.data.nick,
+        this.ctx.user.data.email
+      );
+      this.queryUserInfo.abortFunc = abort;
+      req.then((data) => {
+        var _a;
+        if (!data.is_login) {
+          this.ctx.user.logout();
+        }
+        this.ctx.updateNotifies(data.unread);
+        if (this.ctx.user.checkHasBasicUserInfo() && !data.is_login && ((_a = data.user) == null ? void 0 : _a.is_admin)) {
+          this.showLoginDialog();
+        }
+        if (data.user && data.user.link) {
+          this.editor.$link.value = data.user.link;
+          this.ctx.user.update({ link: data.user.link });
+        }
+      }).catch(() => {
+      }).finally(() => {
+        this.queryUserInfo.abortFunc = null;
+      });
+    }, 400);
+  }
+  showLoginDialog() {
+    this.ctx.checkAdmin({
+      onSuccess: () => {
+      }
+    });
+  }
+}
+__publicField(HeaderInputPlug, "Name", "headerInput");
+class Editor extends Component {
+  constructor(ctx) {
+    super(ctx);
+    __publicField(this, "$header");
+    __publicField(this, "$nick");
+    __publicField(this, "$email");
+    __publicField(this, "$link");
+    __publicField(this, "$textareaWrap");
+    __publicField(this, "$textarea");
+    __publicField(this, "$bottom");
+    __publicField(this, "$submitBtn");
+    __publicField(this, "$notifyWrap");
+    __publicField(this, "isTraveling", false);
+    __publicField(this, "replyComment", null);
+    __publicField(this, "$sendReply", null);
+    __publicField(this, "editComment", null);
+    __publicField(this, "$editCancelBtn", null);
+    __publicField(this, "ENABLED_PLUGS", [EmoticonsPlug, UploadPlug, PreviewPlug, HeaderInputPlug]);
+    __publicField(this, "plugList", {});
+    __publicField(this, "openedPlugName", null);
+    __publicField(this, "$plugPanelWrap");
+    __publicField(this, "$plugBtnWrap");
+    this.$el = createElement(EditorHTML);
+    this.$header = this.$el.querySelector(".atk-header");
+    this.$nick = this.$header.querySelector('[name="nick"]');
+    this.$email = this.$header.querySelector('[name="email"]');
+    this.$link = this.$header.querySelector('[name="link"]');
+    this.$textareaWrap = this.$el.querySelector(".atk-textarea-wrap");
+    this.$textarea = this.$el.querySelector(".atk-textarea");
+    this.$bottom = this.$el.querySelector(".atk-bottom");
+    this.$submitBtn = this.$el.querySelector(".atk-send-btn");
+    this.$notifyWrap = this.$el.querySelector(".atk-notify-wrap");
+    this.$plugBtnWrap = this.$el.querySelector(".atk-plug-btn-wrap");
+    this.$plugPanelWrap = this.$el.querySelector(".atk-plug-panel-wrap");
+    this.ctx.on("conf-loaded", () => {
+      this.initLocalStorage();
+      this.initHeader();
+      this.initTextarea();
+      this.initSubmitBtn();
+      this.initPlugs();
+    });
+  }
+  get user() {
+    return this.ctx.user;
+  }
+  get $inputs() {
+    return { nick: this.$nick, email: this.$email, link: this.$link };
+  }
+  get isReplyMode() {
+    return this.replyComment !== null;
+  }
+  get isEditMode() {
+    return this.editComment !== null;
+  }
+  initLocalStorage() {
+    const localContent = window.localStorage.getItem("ArtalkContent") || "";
+    if (localContent.trim() !== "") {
+      this.showNotify(this.$t("restoredMsg"), "i");
+      this.setContent(localContent);
+    }
+    this.$textarea.addEventListener("input", () => this.saveToLocalStorage());
+  }
+  saveToLocalStorage() {
+    window.localStorage.setItem("ArtalkContent", this.getContentOriginal().trim());
+  }
+  initHeader() {
+    Object.entries(this.$inputs).forEach(([key, $input]) => {
+      $input.value = this.user.data[key] || "";
+      $input.addEventListener("input", () => this.onHeaderInput(key, $input));
+      $input.placeholder = `${this.$t(key)}`;
+    });
+  }
+  onHeaderInput(key, $input) {
+    if (this.isEditMode)
+      return;
+    this.user.update({
+      [key]: $input.value.trim()
+    });
+    Object.entries(this.plugList).forEach(([plugName, plug]) => {
+      if (plug.onHeaderInput)
+        plug.onHeaderInput(key, $input);
+    });
+  }
+  initTextarea() {
+    this.$textarea.placeholder = this.ctx.conf.placeholder || this.$t("placeholder");
+    this.$textarea.addEventListener("keydown", (e) => {
+      const keyCode = e.keyCode || e.which;
+      if (keyCode === 9) {
+        e.preventDefault();
+        this.insertContent("	");
+      }
+    });
+    this.$textarea.addEventListener("input", () => {
+      this.adjustTextareaHeight();
+    });
+  }
+  refreshSendBtnText() {
+    if (this.isEditMode)
+      this.$submitBtn.innerText = this.$t("save");
+    else
+      this.$submitBtn.innerText = this.ctx.conf.sendBtn || this.$t("send");
+  }
+  initSubmitBtn() {
+    this.refreshSendBtnText();
+    this.$submitBtn.addEventListener("click", () => this.submit());
+  }
+  getFinalContent() {
+    let content = this.getContentOriginal();
+    if (this.plugList.emoticons) {
+      content = this.plugList.emoticons.transEmoticonImageText(content);
+    }
+    return content;
+  }
+  getContentOriginal() {
+    return this.$textarea.value || "";
+  }
+  getContentMarked() {
+    return marked(this.ctx, this.getFinalContent());
+  }
+  setContent(val) {
+    this.$textarea.value = val;
+    this.saveToLocalStorage();
+    if (this.plugList.preview) {
+      this.plugList.preview.updateContent();
+    }
+    window.setTimeout(() => {
+      this.adjustTextareaHeight();
+    }, 80);
+  }
+  insertContent(val) {
+    if (document.selection) {
+      this.$textarea.focus();
+      document.selection.createRange().text = val;
+      this.$textarea.focus();
+    } else if (this.$textarea.selectionStart || this.$textarea.selectionStart === 0) {
+      const sStart = this.$textarea.selectionStart;
+      const sEnd = this.$textarea.selectionEnd;
+      const sT = this.$textarea.scrollTop;
+      this.setContent(this.$textarea.value.substring(0, sStart) + val + this.$textarea.value.substring(sEnd, this.$textarea.value.length));
+      this.$textarea.focus();
+      this.$textarea.selectionStart = sStart + val.length;
+      this.$textarea.selectionEnd = sStart + val.length;
+      this.$textarea.scrollTop = sT;
+    } else {
+      this.$textarea.focus();
+      this.$textarea.value += val;
+    }
+  }
+  adjustTextareaHeight() {
+    const diff = this.$textarea.offsetHeight - this.$textarea.clientHeight;
+    this.$textarea.style.height = "0px";
+    this.$textarea.style.height = `${this.$textarea.scrollHeight + diff}px`;
+  }
+  setReply(commentData, $comment, scroll = true) {
+    if (this.isEditMode)
+      this.cancelEditComment();
+    if (this.isReplyMode)
+      this.cancelReply();
+    if (this.$sendReply === null) {
+      this.$sendReply = createElement(`<div class="atk-send-reply">${this.$t("reply")} <span class="atk-text"></span><span class="atk-cancel">\xD7</span></div>`);
+      this.$sendReply.querySelector(".atk-text").innerText = `@${commentData.nick}`;
+      this.$sendReply.addEventListener("click", () => {
+        this.cancelReply();
+      });
+      this.$textareaWrap.append(this.$sendReply);
+    }
+    this.replyComment = commentData;
+    if (this.ctx.conf.editorTravel === true) {
+      this.travel($comment);
+    }
+    if (scroll)
+      scrollIntoView(this.$el);
+    this.$textarea.focus();
+  }
+  cancelReply() {
+    if (this.$sendReply !== null) {
+      this.$sendReply.remove();
+      this.$sendReply = null;
+    }
+    this.replyComment = null;
+    if (this.ctx.conf.editorTravel === true) {
+      this.travelBack();
+    }
+  }
+  setEditComment(commentData, $comment) {
+    if (this.isEditMode)
+      this.cancelEditComment();
+    if (this.isReplyMode)
+      this.cancelReply();
+    if (this.$editCancelBtn === null) {
+      this.$editCancelBtn = createElement(`<div class="atk-send-reply">${this.$t("editCancel")}<span class="atk-cancel">\xD7</span></div>`);
+      this.$editCancelBtn.onclick = () => {
+        this.cancelEditComment();
+      };
+      this.$textareaWrap.append(this.$editCancelBtn);
+    }
+    this.editComment = commentData;
+    this.$header.style.display = "none";
+    this.travel($comment);
+    this.$nick.value = commentData.nick;
+    this.$email.value = commentData.email || "";
+    this.$link.value = commentData.link;
+    this.setContent(commentData.content);
+    this.$textarea.focus();
+    this.refreshSendBtnText();
+  }
+  cancelEditComment() {
+    if (this.$editCancelBtn !== null) {
+      this.$editCancelBtn.remove();
+      this.$editCancelBtn = null;
+    }
+    this.editComment = null;
+    this.travelBack();
+    this.$nick.value = this.user.data.nick;
+    this.$email.value = this.user.data.email;
+    this.$link.value = this.user.data.link;
+    this.setContent("");
+    this.refreshSendBtnText();
+    this.$header.style.display = "";
+  }
+  showNotify(msg, type) {
+    showNotify(this.$notifyWrap, msg, type);
+  }
+  showLoading() {
+    showLoading(this.$el);
+  }
+  hideLoading() {
+    hideLoading(this.$el);
+  }
+  submit() {
+    return __async(this, null, function* () {
+      if (this.getFinalContent().trim() === "") {
+        this.$textarea.focus();
+        return;
+      }
+      this.ctx.trigger("editor-submit");
+      this.showLoading();
+      if (!this.isEditMode) {
+        yield this.submitAdd();
+      } else {
+        yield this.submitEdit();
+      }
+      this.hideLoading();
+    });
+  }
+  submitAdd() {
+    return __async(this, null, function* () {
+      try {
+        const nComment = yield this.ctx.getApi().comment.add({
+          content: this.getFinalContent(),
+          nick: this.user.data.nick,
+          email: this.user.data.email,
+          link: this.user.data.link,
+          rid: this.replyComment === null ? 0 : this.replyComment.id,
+          page_key: this.replyComment === null ? this.ctx.conf.pageKey : this.replyComment.page_key,
+          page_title: this.replyComment === null ? this.ctx.conf.pageTitle : void 0,
+          site_name: this.replyComment === null ? this.ctx.conf.site : this.replyComment.site_name
+        });
+        if (this.replyComment !== null && this.replyComment.page_key !== this.ctx.conf.pageKey) {
+          window.open(`${this.replyComment.page_url}#atk-comment-${nComment.id}`);
+        }
+        this.ctx.insertComment(nComment);
+        this.setContent("");
+        this.cancelReply();
+        this.ctx.trigger("editor-submitted");
+      } catch (err) {
+        console.error(err);
+        this.showNotify(`${this.$t("commentFail")}\uFF0C${err.msg || String(err)}`, "e");
+      }
+    });
+  }
+  submitEdit() {
+    return __async(this, null, function* () {
+      try {
+        const saveData = {
+          content: this.getFinalContent(),
+          nick: this.$nick.value,
+          email: this.$email.value,
+          link: this.$link.value
+        };
+        const nComment = yield this.ctx.getApi().comment.commentEdit(__spreadValues(__spreadValues({}, this.editComment), saveData));
+        this.ctx.updateComment(nComment);
+        this.setContent("");
+        this.cancelEditComment();
+        this.ctx.trigger("editor-submitted");
+      } catch (err) {
+        console.error(err);
+        this.showNotify(`${this.$t("commentFail")}\uFF0C${err.msg || String(err)}`, "e");
+      }
+    });
+  }
+  close() {
+    if (!this.$textareaWrap.querySelector(".atk-comment-closed"))
+      this.$textareaWrap.prepend(createElement(`<div class="atk-comment-closed">${this.$t("onlyAdminCanReply")}</div>`));
+    if (!this.user.data.isAdmin) {
+      this.$textarea.style.display = "none";
+      this.closePlugPanel();
+      this.$bottom.style.display = "none";
+    } else {
+      this.$textarea.style.display = "";
+      this.$bottom.style.display = "";
+    }
+  }
+  open() {
+    var _a;
+    (_a = this.$textareaWrap.querySelector(".atk-comment-closed")) == null ? void 0 : _a.remove();
+    this.$textarea.style.display = "";
+    this.$bottom.style.display = "";
+  }
+  travel($afterEl) {
+    if (this.isTraveling)
+      return;
+    this.isTraveling = true;
+    this.$el.after(createElement('<div class="atk-editor-travel-placeholder"></div>'));
+    const $travelPlace = createElement("<div></div>");
+    $afterEl.after($travelPlace);
+    $travelPlace.replaceWith(this.$el);
+    this.$el.classList.add("atk-fade-in");
+  }
+  travelBack() {
+    var _a;
+    if (!this.isTraveling)
+      return;
+    this.isTraveling = false;
+    (_a = this.ctx.$root.querySelector(".atk-editor-travel-placeholder")) == null ? void 0 : _a.replaceWith(this.$el);
+    if (this.replyComment !== null)
+      this.cancelReply();
+  }
+  initPlugs() {
+    this.plugList = {};
+    this.$plugPanelWrap.innerHTML = "";
+    this.$plugPanelWrap.style.display = "none";
+    this.openedPlugName = null;
+    this.$plugBtnWrap.innerHTML = "";
+    const disabledPlugs = [];
+    if (!this.conf.emoticons)
+      disabledPlugs.push("emoticons");
+    if (!this.conf.preview)
+      disabledPlugs.push("preview");
+    this.ENABLED_PLUGS.forEach((Plug) => {
+      const plugName = Plug.Name;
+      if (disabledPlugs.includes(plugName))
+        return;
+      const plug = new Plug(this);
+      this.plugList[plugName] = plug;
+      const $btn = plug.getBtn();
+      if ($btn) {
+        this.$plugBtnWrap.appendChild($btn);
+        $btn.onclick = $btn.onclick || (() => {
+          this.$plugBtnWrap.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
+          if (plugName === this.openedPlugName) {
+            this.closePlugPanel();
+            return;
+          }
+          this.openPlugPanel(plugName);
+          $btn.classList.add("active");
+        });
+        const $panel = plug.getPanel();
+        if ($panel) {
+          $panel.setAttribute("data-plug-name", plugName);
+          $panel.style.display = "none";
+          this.$plugPanelWrap.appendChild($panel);
+        }
+      }
+    });
+  }
+  openPlugPanel(plugName) {
+    Object.entries(this.plugList).forEach(([aPlugName, plug]) => {
+      const plugPanel = plug.getPanel();
+      if (!plugPanel)
+        return;
+      if (aPlugName === plugName) {
+        plugPanel.style.display = "";
+        if (plug.onPanelShow)
+          plug.onPanelShow();
+      } else {
+        plugPanel.style.display = "none";
+        if (plug.onPanelHide)
+          plug.onPanelHide();
+      }
+    });
+    this.$plugPanelWrap.style.display = "";
+    this.openedPlugName = plugName;
+  }
+  closePlugPanel() {
+    if (!this.openedPlugName)
+      return;
+    const plug = this.plugList[this.openedPlugName];
+    if (!plug)
+      return;
+    if (plug.onPanelHide)
+      plug.onPanelHide();
+    this.$plugPanelWrap.style.display = "none";
+    this.openedPlugName = null;
+  }
+}
+const SidebarHTML = '<div class="atk-sidebar-layer">\n  <div class="atk-sidebar-inner">\n    <div class="atk-sidebar-header">\n      <div class="atk-sidebar-close"><i class="atk-icon atk-icon-close"></i></div>\n    </div>\n    <div class="atk-sidebar-iframe-wrap"></div>\n  </div>\n</div>\n';
 class SidebarLayer extends Component {
   constructor(ctx) {
     super(ctx);
@@ -5018,12 +5251,9 @@ class SidebarLayer extends Component {
         };
       }
       this.layer.show();
-      setTimeout(() => {
-        this.$el.style.transform = "translate(0, 0)";
-      }, 20);
       (() => __async(this, null, function* () {
         var _a;
-        const resp = yield this.ctx.getApi().loginStatus();
+        const resp = yield this.ctx.getApi().user.loginStatus();
         if (resp.is_admin && !resp.is_login) {
           (_a = this.layer) == null ? void 0 : _a.hide();
           this.firstShow = true;
@@ -5038,7 +5268,6 @@ class SidebarLayer extends Component {
           });
         }
       }))();
-      this.ctx.updateNotifies([]);
       if (this.firstShow) {
         this.$iframeWrap.innerHTML = "";
         this.$iframe = createElement("<iframe></iframe>");
@@ -5064,6 +5293,12 @@ class SidebarLayer extends Component {
         if (!this.conf.darkMode && isIframeSrcDarkMode)
           this.iframeLoad(this.$iframe.src.replace("&darkMode=1", ""));
       }
+      setTimeout(() => {
+        this.$el.style.transform = "translate(0, 0)";
+      }, 100);
+      setTimeout(() => {
+        this.ctx.updateNotifies([]);
+      }, 0);
       this.ctx.trigger("sidebar-show");
     });
   }
@@ -5084,7 +5319,13 @@ class SidebarLayer extends Component {
   }
 }
 const PvCountWidget = (ctx) => {
-  initCountWidget({ ctx, pvAdd: true });
+  if (!ctx.conf.useBackendConf) {
+    initCountWidget({ ctx, pvAdd: true });
+  } else {
+    ctx.on("list-loaded", () => {
+      initCountWidget({ ctx, pvAdd: true });
+    });
+  }
 };
 function initCountWidget(p) {
   return __async(this, null, function* () {
@@ -5092,7 +5333,7 @@ function initCountWidget(p) {
     if (countEl && document.querySelector(countEl)) {
       handleStatCount(p, { api: "page_comment", countEl });
     }
-    const curtPagePvNum = p.pvAdd ? yield p.ctx.getApi().pv() : void 0;
+    const curtPagePvNum = p.pvAdd ? yield p.ctx.getApi().page.pv() : void 0;
     const pvEl = p.ctx.conf.pvEl;
     if (pvEl && document.querySelector(pvEl)) {
       handleStatCount(p, {
@@ -5112,7 +5353,7 @@ function handleStatCount(p, args) {
     let queryPageKeys = Array.from(document.querySelectorAll(args.countEl)).map((e) => e.getAttribute("data-page-key") || curtPageKey).filter((pageKey) => pageCounts[pageKey] === void 0);
     queryPageKeys = [...new Set(queryPageKeys)];
     if (queryPageKeys.length > 0) {
-      const counts = yield p.ctx.getApi().stat(args.api, queryPageKeys);
+      const counts = yield p.ctx.getApi().page.stat(args.api, queryPageKeys);
       pageCounts = __spreadValues(__spreadValues({}, pageCounts), counts);
     }
     document.querySelectorAll(args.countEl).forEach((el) => {
@@ -5126,37 +5367,46 @@ const _Artalk = class {
     __publicField(this, "conf");
     __publicField(this, "ctx");
     __publicField(this, "$root");
-    __publicField(this, "checkerLauncher");
-    __publicField(this, "editor");
-    __publicField(this, "list");
-    __publicField(this, "sidebarLayer");
     __publicField(this, "instancePlugins", []);
     this.conf = _Artalk.HandelBaseConf(customConf);
     if (this.conf.el instanceof HTMLElement)
       this.$root = this.conf.el;
     this.ctx = new Context(this.conf, this.$root);
-    if (this.conf.useBackendConf)
-      return this.loadConfRemoteAndInitComponents();
     this.initComponents();
   }
   initComponents() {
     this.initLocale();
     this.initLayer();
-    this.initDarkMode();
     initMarked(this.ctx);
-    this.checkerLauncher = new CheckerLauncher(this.ctx);
-    this.ctx.setCheckerLauncher(this.checkerLauncher);
-    this.editor = new Editor(this.ctx);
-    this.ctx.setEditor(this.editor);
-    this.$root.appendChild(this.editor.$el);
-    this.list = new List(this.ctx);
-    this.ctx.setList(this.list);
-    this.$root.appendChild(this.list.$el);
-    this.sidebarLayer = new SidebarLayer(this.ctx);
-    this.ctx.setSidebarLayer(this.sidebarLayer);
-    this.$root.appendChild(this.sidebarLayer.$el);
-    this.list.fetchComments(0);
-    this.initEventBind();
+    const Components = {
+      checkerLauncher: () => {
+        const checkerLauncher = new CheckerLauncher(this.ctx);
+        this.ctx.setCheckerLauncher(checkerLauncher);
+      },
+      editor: () => {
+        const editor = new Editor(this.ctx);
+        this.ctx.setEditor(editor);
+        this.$root.appendChild(editor.$el);
+      },
+      list: () => {
+        const list = new List(this.ctx);
+        this.ctx.setList(list);
+        this.$root.appendChild(list.$el);
+        list.fetchComments(0);
+      },
+      sidebarLayer: () => {
+        const sidebarLayer = new SidebarLayer(this.ctx);
+        this.ctx.setSidebarLayer(sidebarLayer);
+      },
+      eventsDefault: () => {
+        this.initEventBind();
+      }
+    };
+    Object.entries(Components).forEach(([name, initComponent]) => {
+      if (_Artalk.DisabledComponents.includes(name))
+        return;
+      initComponent();
+    });
     _Artalk.Plugins.forEach((plugin) => {
       if (typeof plugin === "function")
         plugin(this.ctx);
@@ -5184,30 +5434,9 @@ const _Artalk = class {
     }
     return conf;
   }
-  loadConfRemoteAndInitComponents() {
-    return __async(this, null, function* () {
-      yield this.loadConfRemote();
-      this.initComponents();
-      return this;
-    });
-  }
-  loadConfRemote() {
-    return __async(this, null, function* () {
-      showLoading(this.$root);
-      let backendConf = {};
-      try {
-        backendConf = yield this.ctx.getApi().conf();
-      } catch (err) {
-        console.error("Load config from remote err", err);
-      }
-      this.ctx.conf = mergeDeep(this.ctx.conf, backendConf);
-      hideLoading(this.$root);
-    });
-  }
   initEventBind() {
     window.addEventListener("hashchange", () => {
-      this.list.goToCommentDelay = false;
-      this.list.checkGoToCommentByUrlHash();
+      this.ctx.listHashGotoCheck();
     });
     this.ctx.on("user-changed", () => {
       this.ctx.checkAdminShowEl();
@@ -5222,17 +5451,6 @@ const _Artalk = class {
   initLayer() {
     Layer.BodyOrgOverflow = document.body.style.overflow;
     Layer.BodyOrgPaddingRight = document.body.style.paddingRight;
-  }
-  initDarkMode() {
-    if (this.conf.darkMode === "auto") {
-      const darkModeMedia = window.matchMedia("(prefers-color-scheme: dark)");
-      darkModeMedia.addEventListener("change", (e) => {
-        this.setDarkMode(e.matches);
-      });
-      this.setDarkMode(darkModeMedia.matches);
-    } else {
-      this.setDarkMode(this.conf.darkMode || false);
-    }
   }
   on(name, handler) {
     this.ctx.on(name, handler, "external");
@@ -5268,6 +5486,10 @@ const _Artalk = class {
   }
 };
 let Artalk = _Artalk;
+__publicField(Artalk, "ListLite", ListLite);
 __publicField(Artalk, "defaults", defaults);
 __publicField(Artalk, "Plugins", [PvCountWidget]);
-export { Artalk as default };
+__publicField(Artalk, "DisabledComponents", []);
+export {
+  Artalk as default
+};

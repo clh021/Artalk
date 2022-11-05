@@ -9,14 +9,23 @@ export default class ListLite extends Component {
     protected $commentsWrap: HTMLElement;
     protected data?: ListData;
     protected isLoading: boolean;
-    noCommentText: string;
+    noCommentText?: string;
+    /** 嵌套模式下的排序方式 */
+    private _nestSortBy?;
+    get nestSortBy(): ListNest.SortByType;
+    set nestSortBy(val: ListNest.SortByType);
     /** 平铺模式 */
-    flatMode: boolean;
-    /** 嵌套模式 */
-    nestSortBy: ListNest.SortByType;
-    /** 分页 */
-    pageMode: 'pagination' | 'read-more';
-    pageSize: number;
+    private _flatMode?;
+    get flatMode(): boolean;
+    set flatMode(val: boolean);
+    /** 分页方式 */
+    _pageMode?: 'pagination' | 'read-more';
+    get pageMode(): 'pagination' | 'read-more';
+    set pageMode(val: 'pagination' | 'read-more');
+    /** 每页数量 (每次请求获取量) */
+    private _pageSize?;
+    get pageSize(): number;
+    set pageSize(val: number);
     scrollListenerAt?: HTMLElement;
     repositionAt?: HTMLElement;
     protected pagination?: Pagination;
@@ -35,6 +44,7 @@ export default class ListLite extends Component {
     setLoading(val: boolean, isFirstLoad?: boolean): void;
     /** 评论获取 */
     fetchComments(offset: number): Promise<void>;
+    private confLoaded;
     protected onLoad(data: ListData, offset: number): void;
     /** 分页模式 */
     private refreshPagination;
