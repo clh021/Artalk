@@ -9,7 +9,15 @@ export interface CountConf {
 }
 
 export const PvCountWidget: ArtalkPlug = (ctx: ContextApi) => {
-  initCountWidget({ ctx, pvAdd: true })
+  if (!ctx.conf.useBackendConf) {
+    // 不使用后端配置，在 Artalk 实例被创建后，立刻初始化
+    initCountWidget({ ctx, pvAdd: true })
+  } else {
+    // 若使用后端配置，需待配置成功获取后 (来自后端设定的 pvEl 等)，再初始化
+    ctx.on('list-loaded', () => {
+      initCountWidget({ ctx, pvAdd: true })
+    })
+  }
 }
 
 /** 初始化评论数和 PV 数量展示元素 */
@@ -21,7 +29,7 @@ export async function initCountWidget(p: CountConf) {
   }
 
   // PV
-  const curtPagePvNum = p.pvAdd ? await p.ctx.getApi().pv() : undefined
+  const curtPagePvNum = p.pvAdd ? await p.ctx.getApi().page.pv() : undefined
   const pvEl = p.ctx.conf.pvEl
   if (pvEl && document.querySelector(pvEl)) {
     handleStatCount(p, {
@@ -52,7 +60,7 @@ export async function handleStatCount(
     .filter((pageKey) => pageCounts[pageKey] === undefined)
   queryPageKeys = [...new Set(queryPageKeys)] // 去重
   if (queryPageKeys.length > 0) {
-    const counts: any = await p.ctx.getApi().stat(args.api, queryPageKeys)
+    const counts: any = await p.ctx.getApi().page.stat(args.api, queryPageKeys)
     pageCounts = { ...pageCounts, ...counts }
   }
 

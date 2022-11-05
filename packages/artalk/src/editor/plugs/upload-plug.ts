@@ -33,7 +33,7 @@ export default class UploadPlug extends EditorPlug {
       $input.click() // 显示选择图片对话框
     }
 
-    this.ctx.on('conf-updated', () => {
+    this.ctx.on('conf-loaded', () => {
       if (!this.ctx.conf.imgUpload) {
         this.getBtn()!.setAttribute('atk-only-admin-show', '')
         this.ctx.checkAdminShowEl()
@@ -99,7 +99,7 @@ export default class UploadPlug extends EditorPlug {
     try {
       if (!this.ctx.conf.imgUploader) {
         // 使用 ArtalkGo 进行图片上传
-        resp = await this.ctx.getApi().imgUpload(file)
+        resp = await this.ctx.getApi().upload.imgUpload(file)
       } else {
         // 使用自定义的图片上传器
         resp = {img_url: await this.ctx.conf.imgUploader(file)}

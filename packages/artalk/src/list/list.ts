@@ -1,7 +1,6 @@
-import '../style/list.less'
-
 import { ListData, NotifyData } from '~/types/artalk-data'
 import Context from '~/types/context'
+import { version as ARTALK_VERSION } from '../../package.json'
 import * as Utils from '../lib/utils'
 import * as Ui from '../lib/ui'
 import ListHTML from './list.html?raw'
@@ -24,20 +23,7 @@ export default class List extends ListLite {
     el.querySelector('.atk-list-body')!.append(this.$el)
     this.$el = el
 
-    // 平铺模式
-    if (this.ctx.conf.flatMode === true) {
-      this.flatMode = true // 遵循配置总是开启平铺模式
-    } else if (this.conf.nestMax && this.conf.nestMax <= 1) {
-      this.flatMode = true // 嵌套层数值无效时，强制开启平铺模式
-    } else if (this.ctx.conf.flatMode === 'auto') {
-      // 自动判断启用平铺模式
-      if (window.matchMedia("(max-width: 768px)").matches)
-        this.flatMode = true
-    }
-
     // 分页模式
-    this.pageMode = this.conf.pagination.readMore ? 'read-more' : 'pagination'
-    this.pageSize = this.conf.pagination.pageSize || 20
     this.repositionAt = this.$el
 
     // 操作按钮
@@ -48,11 +34,6 @@ export default class List extends ListLite {
       count: '<span class="atk-comment-count-num">0</span>',
     })
     this.$commentCountNum = this.$commentCount.querySelector('.atk-comment-count-num')!
-
-    // 评论列表排序 Dropdown 下拉选择层
-    if (this.ctx.conf.listSort) {
-      this.initDropdown()
-    }
 
     // copyright
     this.$el.querySelector<HTMLElement>('.atk-copyright')!.innerHTML = `Powered By <a href="https://artalk.js.org" target="_blank" title="Artalk v${ARTALK_VERSION}">Artalk</a>`
@@ -105,6 +86,11 @@ export default class List extends ListLite {
       this.ctx.editorOpen()
       this.$closeCommentBtn.innerHTML = this.$t('closeComment')
     }
+
+    // 评论列表排序 Dropdown 下拉选择层
+    if (this.ctx.conf.listSort) {
+      this.initDropdown()
+    }
   }
 
   protected onLoad(data: ListData, offset: number) {
@@ -143,7 +129,7 @@ export default class List extends ListLite {
     // 已阅 API
     const notifyKey = Utils.getQueryParam('atk_notify_key')
     if (notifyKey) {
-      this.ctx.getApi().markRead(notifyKey)
+      this.ctx.getApi().user.markRead(notifyKey)
         .then(() => {
           this.unread = this.unread.filter(o => o.comment_id !== commentId)
           this.updateUnread(this.unread)
@@ -175,7 +161,7 @@ export default class List extends ListLite {
     if (!this.data || !this.data.page) return
 
     this.ctx.editorShowLoading()
-    this.ctx.getApi().pageEdit(this.data.page)
+    this.ctx.getApi().page.pageEdit(this.data.page)
       .then((page) => {
         if (this.data)
           this.data.page = { ...page }
@@ -198,8 +184,13 @@ export default class List extends ListLite {
     }
   }
 
+  private dropdownLoaded = false
+
   /** 初始化选择下拉层 */
   protected initDropdown() {
+    if (this.dropdownLoaded) return
+    this.dropdownLoaded = true
+
     this.$dropdownWrap = this.$commentCount
     this.$commentCount.classList.add('atk-dropdown-wrap')
 

@@ -7,6 +7,7 @@ import Context from '~/types/context'
 import ConcreteContext from './context'
 import defaults from './defaults'
 
+import ListLite from './list/list-lite'
 import CheckerLauncher from './lib/checker'
 import Editor from './editor'
 import List from './list'
@@ -23,22 +24,21 @@ import * as Stat from './lib/stat'
  * @website https://artalk.js.org
  */
 export default class Artalk {
+  public static ListLite = ListLite
   public static readonly defaults: ArtalkConfig = defaults
 
   public conf!: ArtalkConfig
   public ctx!: Context
   public $root!: HTMLElement
 
-  public checkerLauncher!: CheckerLauncher
-  public editor!: Editor
-  public list!: List
-  public sidebarLayer!: SidebarLayer
-
   /** Plugins (in global scope)  */
   protected static Plugins: ArtalkPlug[] = [ Stat.PvCountWidget ]
 
   /** Plugins (in a instance scope) */
   protected instancePlugins: ArtalkPlug[] = []
+
+  /** 禁用的组件 */
+  public static DisabledComponents: string[] = []
 
   constructor(customConf: Partial<ArtalkConfig>) {
     /* 初始化基本配置 */
@@ -48,9 +48,6 @@ export default class Artalk {
     /* 初始化 Context */
     this.ctx = new ConcreteContext(this.conf, this.$root)
 
-    // @ts-ignore 远程加载引用后端的配置
-    if (this.conf.useBackendConf) return this.loadConfRemoteAndInitComponents()
-
     /* 初始化组件 */
     this.initComponents()
   }
@@ -59,33 +56,51 @@ export default class Artalk {
   private initComponents() {
     this.initLocale()
     this.initLayer()
-    this.initDarkMode()
     Utils.initMarked(this.ctx)
 
-    // CheckerLauncher
-    this.checkerLauncher = new CheckerLauncher(this.ctx)
-    this.ctx.setCheckerLauncher(this.checkerLauncher)
+    const Components: { [name: string]: () => void } = {
+      // CheckerLauncher
+      checkerLauncher: () => {
+        const checkerLauncher = new CheckerLauncher(this.ctx)
+        this.ctx.setCheckerLauncher(checkerLauncher)
+      },
 
-    // 编辑器
-    this.editor = new Editor(this.ctx)
-    this.ctx.setEditor(this.editor)
-    this.$root.appendChild(this.editor.$el)
+      // 编辑器
+      editor: () => {
+        const editor = new Editor(this.ctx)
+        this.ctx.setEditor(editor)
+        this.$root.appendChild(editor.$el)
+      },
 
-    // 评论列表
-    this.list = new List(this.ctx)
-    this.ctx.setList(this.list)
-    this.$root.appendChild(this.list.$el)
+      // 评论列表
+      list: () => {
+        // 评论列表
+        const list = new List(this.ctx)
+        this.ctx.setList(list)
+        this.$root.appendChild(list.$el)
 
-    // 侧边栏
-    this.sidebarLayer = new SidebarLayer(this.ctx)
-    this.ctx.setSidebarLayer(this.sidebarLayer)
-    this.$root.appendChild(this.sidebarLayer.$el)
+        // 评论获取
+        list.fetchComments(0)
+      },
 
-    // 评论获取
-    this.list.fetchComments(0)
+      // 侧边栏 Layer
+      sidebarLayer: () => {
+        const sidebarLayer = new SidebarLayer(this.ctx)
+        this.ctx.setSidebarLayer(sidebarLayer)
+      },
 
-    // 事件绑定初始化
-    this.initEventBind()
+      // 默认事件绑定
+      eventsDefault: () => {
+        this.initEventBind()
+      }
+    }
+
+    // 组件初始化
+    Object.entries(Components).forEach(([name, initComponent]) => {
+      if (Artalk.DisabledComponents.includes(name)) return
+
+      initComponent()
+    })
 
     // 插件初始化 (global scope)
     Artalk.Plugins.forEach(plugin => {
@@ -95,7 +110,7 @@ export default class Artalk {
   }
 
   /** 基本配置初始化 */
-  private static HandelBaseConf(customConf: Partial<ArtalkConfig>): ArtalkConfig {
+  public static HandelBaseConf(customConf: Partial<ArtalkConfig>): ArtalkConfig {
     // 合并默认配置
     const conf: ArtalkConfig = Utils.mergeDeep(Artalk.defaults, customConf)
 
@@ -128,30 +143,11 @@ export default class Artalk {
     return conf
   }
 
-  /** 初始化组件根据远程加载的配置 */
-  private async loadConfRemoteAndInitComponents() {
-    await this.loadConfRemote()
-    this.initComponents()
-    return this
-  }
-
-  /** 远程加载配置 */
-  private async loadConfRemote() {
-    Ui.showLoading(this.$root)
-    let backendConf = {}
-    try {
-      backendConf = await this.ctx.getApi().conf()
-    } catch (err) { console.error("Load config from remote err", err) }
-    this.ctx.conf = Utils.mergeDeep(this.ctx.conf, backendConf)
-    Ui.hideLoading(this.$root)
-  }
-
   /** 事件绑定初始化 */
   private initEventBind() {
     // 锚点快速跳转评论
     window.addEventListener('hashchange', () => {
-      this.list.goToCommentDelay = false
-      this.list.checkGoToCommentByUrlHash()
+      this.ctx.listHashGotoCheck()
     })
 
     // 本地用户数据变更
@@ -173,18 +169,6 @@ export default class Artalk {
     // 记录页面原始 Styles
     Layer.BodyOrgOverflow = document.body.style.overflow
     Layer.BodyOrgPaddingRight = document.body.style.paddingRight
-  }
-
-  /** 暗黑模式初始化 */
-  private initDarkMode() {
-    if (this.conf.darkMode === 'auto') {
-      // 自动切换暗黑模式，事件监听
-      const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)')
-      darkModeMedia.addEventListener('change', (e) => { this.setDarkMode(e.matches) })
-      this.setDarkMode(darkModeMedia.matches)
-    } else {
-      this.setDarkMode(this.conf.darkMode || false)
-    }
   }
 
   /** 监听事件 */

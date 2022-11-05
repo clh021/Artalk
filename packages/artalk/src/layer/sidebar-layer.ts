@@ -1,5 +1,3 @@
-import '../style/sidebar-layer.less'
-
 import Context from '~/types/context'
 import Component from '@/lib/component'
 import * as Utils from '@/lib/utils'
@@ -55,14 +53,9 @@ export default class SidebarLayer extends Component {
     // viewWrap 滚动条归位
     // this.$viewWrap.scrollTo(0, 0)
 
-    // 执行动画
-    setTimeout(() => {
-      this.$el.style.transform = 'translate(0, 0)'
-    }, 20)
-
     // 管理员身份验证 (若身份失效，弹出验证窗口)
     ;(async () => {
-      const resp = await this.ctx.getApi().loginStatus()
+      const resp = await this.ctx.getApi().user.loginStatus()
       if (resp.is_admin && !resp.is_login) {
         this.layer?.hide()
         this.firstShow = true
@@ -77,9 +70,6 @@ export default class SidebarLayer extends Component {
         })
       }
     })()
-
-    // 清空 unread
-    this.ctx.updateNotifies([])
 
     // 第一次加载
     if (this.firstShow) {
@@ -115,6 +105,16 @@ export default class SidebarLayer extends Component {
       if (!this.conf.darkMode && isIframeSrcDarkMode)
         this.iframeLoad(this.$iframe!.src.replace('&darkMode=1', ''))
     }
+
+    // 执行滑动显示动画
+    setTimeout(() => {
+      this.$el.style.transform = 'translate(0, 0)'
+    }, 100)
+
+    // 清空 unread
+    setTimeout(() => {
+      this.ctx.updateNotifies([])
+    }, 0)
 
     this.ctx.trigger('sidebar-show')
   }
