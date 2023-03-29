@@ -1,0 +1,24 @@
+{
+  "name": "docs",
+  "version": "2.0.0",
+  "description": "Artalk documentation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ArtalkJS/Artalk",
+    "directory": "docs"
+  },
+  "private": true,
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "pnpm run swagger:build && vitepress build",
+    "docs:serve": "vitepress serve",
+    "swagger:build": "npx @redocly/cli build-docs --output public/http-api.html",
+    "swagger:serve": "npx @redocly/cli preview-docs"
+  },
+  "devDependencies": {
+    "@redocly/cli": "1.0.0-beta.124",
+    "markdown-it-for-inline": "^0.1.1",
+    "sass": "^1.59.3",
+    "vitepress": "1.0.0-alpha.60"
+  }
+}

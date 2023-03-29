@@ -11,7 +11,7 @@
 
 > 🌌 A Self-hosted comment system
 
-[简体中文](./README.md) / [Documentation](https://artalk.js.org) / [Releases](https://github.com/ArtalkJS/ArtalkGo/releases) / [ArtalkGo](https://github.com/ArtalkJS/ArtalkGo)
+[简体中文](./README.md) / [Documentation](https://artalk.js.org) / [Releases](https://github.com/ArtalkJS/Artalk/releases) / [Artalk](https://github.com/ArtalkJS/Artalk)
 
 ---
 
@@ -64,30 +64,22 @@ $ pnpm add artalk
 ```ts
 import Artalk from 'artalk'
 
-new Artalk({
+Artalk.init({
   el:        '#Comments',
   pageKey:   'http://your_domain/post/1', // Page Link
   pageTitle: 'The title of your page',    // Page Title
   server:    'http://localhost:8080/api', // Server URL
   site:      'Site Name',
-  i18n:      'en-US'
+  locale:    'en'
 })
 ```
 
 ### Docker
 
 ```sh
-# Create a directory for Artalk
-mkdir Artalk
-cd Artalk
-
-# Download config template
-curl -L https://raw.githubusercontent.com/ArtalkJS/ArtalkGo/master/artalk-go.example.yml > conf.yml
-
 docker run -d \
   --name artalk \
-  -p 0.0.0.0:8080:23366 \
-  -v $(pwd)/conf.yml:/conf.yml \
+  -p 8080:23366 \
   -v $(pwd)/data:/data \
   artalk/artalk-go
 ```
@@ -110,13 +102,16 @@ services:
     ports:
       - 8080:23366
     volumes:
-      - ./conf.yml:/conf.yml
       - ./data:/data
 ```
 
 ```sh
 docker-compose up -d
 ```
+
+## Development
+
+see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Contributors
 

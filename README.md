@@ -7,11 +7,12 @@
 [![](https://img.shields.io/npm/v/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
 [![](https://img.shields.io/npm/dt/artalk.svg?style=flat-square)](https://www.npmjs.com/package/artalk)
 [![](https://badgen.net/bundlephobia/minzip/artalk?style=flat-square)](https://bundlephobia.com/package/artalk)
+[![Docker Pulls](https://img.shields.io/docker/pulls/artalk/artalk-go?style=flat-square)](https://hub.docker.com/r/artalk/artalk-go)
 [![CircleCI](https://circleci.com/gh/ArtalkJS/Artalk/tree/master.svg?style=svg)](https://circleci.com/gh/ArtalkJS/Artalk/tree/master)
 
 > 🌌 Golang 自托管评论系统
 
-[English](./README.en.md) / [官方文档](https://artalk.js.org) / [最新后端](https://github.com/ArtalkJS/ArtalkGo/releases) / [ArtalkGo](https://github.com/ArtalkJS/ArtalkGo)
+[English](./README.en.md) / [官方文档](https://artalk.js.org) / [最新版本](https://github.com/ArtalkJS/Artalk/releases)
 
 ---
 
@@ -19,7 +20,7 @@
 - 👨‍👧‍👦 安全 (自托管)
 - 🐳 易上手 (防脱发)
 - 🍱 Golang 后端 (快速 / 跨平台)
-- 🌊 Vanilla x TypeScript × Vite (纯天然 / 无依赖)
+- 🌊 Vanilla × TypeScript × Vite (纯天然 / 无依赖)
 
 ## 特性
 
@@ -44,7 +45,7 @@
 - 自动保存：用户输入防丢功能
 - 自动填充：用户链接自动填充
 - 实时预览：评论内容实时预览
-- 暗黑模式：防止眼部疾病伤害
+- 夜间模式：防止眼部疾病伤害
 - 评论折叠：这个不打算给你康
 - 数据备份：防止评论数据丢失
 - 数据迁移：快速切换评论系统
@@ -52,12 +53,14 @@
 - 支持 Latex：提供集成 Katex 插件
 - 使用 [Vite](https://github.com/vitejs/vite)：属于开发者的极致体验
 
+更多内容请查看：[“**介绍文档**”](https://artalk.js.org/guide/intro.html)
+
 ## 食用方针
 
 前往：[“**部署文档**”](https://artalk.js.org/guide/deploy.html)
 
 ```ts
-new Artalk({
+Artalk.init({
   el:     '#Comments',
   site:   'Artalk 的博客',
   server: 'https://artalk.example.com'
@@ -68,7 +71,7 @@ new Artalk({
 
 ```bash
 docker run -d \
-  --name artalk-go \
+  --name artalk \
   -p 8080:23366 \
   -v $(pwd)/data:/data \
   artalk/artalk-go
@@ -96,6 +99,10 @@ services:
 docker-compose up -d
 ```
 
+## Development
+
+see [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 ## Contributors
 
 [![](https://contrib.rocks/image?repo=ArtalkJS/Artalk)](https://github.com/ArtalkJS/Artalk/graphs/contributors)
@@ -114,7 +121,7 @@ docker-compose up -d
 
 ## TODOs 
 
-- [x] [Golang 后端](https://github.com/ArtalkJS/ArtalkGo)
+- [x] Golang 后端
 - [x] 多数据库支持
   - [x] SQLite
   - [x] MySQL
@@ -163,6 +170,9 @@ docker-compose up -d
 - [x] 用户已读标记
 - [x] 验证码
   - [x] 图片验证码
+  - [x] [Turnstile](https://www.cloudflare.com/products/turnstile/)
+  - [x] [ReCAPTCHA](https://www.google.com/recaptcha/about/)
+  - [x] [hCaptcha](https://www.hcaptcha.com/)
   - [x] [极验](https://www.geetest.com/)滑动验证码
 - [x] 反垃圾
   - [x] [Akismet](https://akismet.com/)
